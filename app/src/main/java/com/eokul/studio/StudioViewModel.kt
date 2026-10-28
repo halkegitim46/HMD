@@ -71,6 +71,58 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
         SettingsState.init(ctx)
         classes.addAll(store.load())
         refreshRootName()
+        locked = settings.pinHash != null
+    }
+
+    fun updateSettings(s: Settings) {
+        SettingsState.update(s)
+    }
+
+    // ------------------------------------------------------------------ PIN kilidi
+    var locked by mutableStateOf(false)
+        private set
+    private var backgroundedAt = 0L
+
+    fun lockIfNeeded() {
+        if (settings.pinHash != null) locked = true
+    }
+
+    fun onBackgrounded() {
+        backgroundedAt = System.currentTimeMillis()
+    }
+
+    /** Uygulama arka plandan dönerse ve 30 sn'den uzun kaldıysa kilitler. */
+    fun onForegrounded() {
+        if (settings.pinHash != null && backgroundedAt != 0L &&
+            System.currentTimeMillis() - backgroundedAt > 30_000L
+        ) locked = true
+    }
+
+    private fun hashPin(pin: String, salt: String): String {
+        val d = java.security.MessageDigest.getInstance("SHA-256").digest((salt + pin).toByteArray())
+        return d.joinToString("") { b -> "%02x".format(b) }
+    }
+
+    fun checkPin(pin: String): Boolean {
+        val h = settings.pinHash ?: return true
+        val salt = settings.pinSalt ?: return false
+        return hashPin(pin, salt) == h
+    }
+
+    fun unlock(pin: String): Boolean {
+        if (!checkPin(pin)) return false
+        locked = false
+        return true
+    }
+
+    fun setPin(pin: String?) {
+        if (pin == null) {
+            SettingsState.update(settings.copy(pinHash = null, pinSalt = null))
+            locked = false
+        } else {
+            val salt = java.util.UUID.randomUUID().toString()
+            SettingsState.update(settings.copy(pinHash = hashPin(pin, salt), pinSalt = salt))
+        }
     }
 
     fun toast(msg: String) {

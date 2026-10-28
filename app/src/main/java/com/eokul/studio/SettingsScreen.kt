@@ -40,6 +40,7 @@ import kotlin.math.roundToInt
 fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolean, onClose: () -> Unit) {
     BackHandler { onClose() }
     var confirmRestore by remember { mutableStateOf<Uri?>(null) }
+    var pinOpen by remember { mutableStateOf(false) }
     val restorePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) confirmRestore = uri
     }
@@ -122,6 +123,14 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             Text("  Tam çözünürlüklü orijinali sakla", style = MaterialTheme.typography.bodyMedium)
         }
 
+        Spacer(Modifier.size(12.dp))
+        OutlinedButton(onClick = { pinOpen = true }) {
+            Text(if (vm.settings.pinHash != null) "🔒 PIN: açık (değiştir / kaldır)" else "🔓 PIN kilidi belirle")
+        }
+        Text(
+            "PIN açıkken uygulama başlarken ve 30 sn’den uzun arka planda kalınca PIN sorulur.",
+            style = MaterialTheme.typography.bodySmall, color = Color.Gray
+        )
         Spacer(Modifier.size(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { studio.backup() }) { Text("💾 Yedekle") }
@@ -235,6 +244,8 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
         )
         Spacer(Modifier.size(24.dp))
     }
+
+    if (pinOpen) PinDialog(studio, vm.settings.pinHash != null) { pinOpen = false }
 
     val rs = confirmRestore
     if (rs != null) {

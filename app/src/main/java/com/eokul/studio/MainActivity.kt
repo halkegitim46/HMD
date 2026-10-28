@@ -42,7 +42,13 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         vm.persistNow()
         studio.persistNow()
+        studio.onBackgrounded()
         super.onStop()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        studio.onForegrounded()
     }
 }
 
@@ -87,6 +93,10 @@ fun AppRoot(vm: AppViewModel, studio: StudioViewModel) {
     BackHandler(enabled = studio.stack.size > 1) { studio.handleBack() }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        if (studio.locked) {
+            LockScreen(studio)
+            return@Surface
+        }
         Box(Modifier.fillMaxSize()) {
             when (val sc = studio.screen) {
                 is Screen.Home -> HomeScreen(studio)

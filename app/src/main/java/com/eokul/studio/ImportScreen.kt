@@ -59,6 +59,24 @@ fun ImportScreen(studio: StudioViewModel, classId: String?) {
     var newName by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
 
+    val filePicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri: android.net.Uri? ->
+        if (uri != null) {
+            try {
+                val bytes = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                if (bytes == null || bytes.isEmpty()) {
+                    error = "Dosya boş"
+                } else {
+                    text = decodeText(bytes)
+                    error = null
+                }
+            } catch (e: Exception) {
+                error = "Dosya okunamadı"
+            }
+        }
+    }
+
     val result = remember(text, delim, surnameFirst, caseMode) {
         if (text.isBlank()) null else RosterParser.parse(text, delim, surnameFirst, caseMode)
     }
@@ -102,6 +120,9 @@ fun ImportScreen(studio: StudioViewModel, classId: String?) {
                         error = null
                     }
                 }) { Text("📋 Panodan yapıştır") }
+                OutlinedButton(onClick = { filePicker.launch(arrayOf("text/*", "application/vnd.ms-excel", "application/octet-stream")) }) {
+                    Text("📄 Dosyadan al")
+                }
                 if (text.isNotEmpty()) OutlinedButton(onClick = { text = "" }) { Text("Temizle") }
             }
             Spacer(Modifier.size(6.dp))
@@ -217,5 +238,17 @@ private fun <T> ChipRow(options: List<T>, selected: T, label: (T) -> String, onS
                 FilterChip(selected = o == selected, onClick = { onSelect(o) }, label = { Text(label(o)) })
             }
         }
+    }
+}
+
+/** UTF-8 (BOM'lu olabilir); geçersizse Türkçe Excel CSV'lerinin kullandığı Windows-1254. */
+private fun decodeText(bytes: ByteArray): String {
+    return try {
+        val dec = Charsets.UTF_8.newDecoder()
+            .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+            .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+        dec.decode(java.nio.ByteBuffer.wrap(bytes)).toString()
+    } catch (e: Exception) {
+        String(bytes, java.nio.charset.Charset.forName("windows-1254"))
     }
 }

@@ -19,7 +19,12 @@ data class Settings(
     /** Onaydan sonra sıradaki öğrenciye otomatik geç. */
     val serialMode: Boolean = true,
     /** Tam çözünürlüklü orijinal fotoğrafı "Orijinaller" klasöründe sakla. */
-    val keepOriginals: Boolean = true
+    val keepOriginals: Boolean = true,
+    /** Yüz kılavuza oturup sabit durunca otomatik çek. */
+    val autoCapture: Boolean = false,
+    /** PIN (SHA-256 + tuz); null ise uygulama kilitsiz. */
+    val pinHash: String? = null,
+    val pinSalt: String? = null
 ) {
     fun cropParams(): Crop.Params {
         val p = Crop.Params()
@@ -53,7 +58,10 @@ class Prefs(context: Context) {
             outputDir = outDir,
             rootUri = sp.getString("rootUri", null)?.takeIf { it.isNotBlank() },
             serialMode = sp.getBoolean("serialMode", d.serialMode),
-            keepOriginals = sp.getBoolean("keepOriginals", d.keepOriginals)
+            keepOriginals = sp.getBoolean("keepOriginals", d.keepOriginals),
+            autoCapture = sp.getBoolean("autoCapture", d.autoCapture),
+            pinHash = sp.getString("pinHash", null)?.takeIf { it.isNotBlank() },
+            pinSalt = sp.getString("pinSalt", null)?.takeIf { it.isNotBlank() }
         )
     }
 
@@ -69,6 +77,9 @@ class Prefs(context: Context) {
             .putString("rootUri", s.rootUri)
             .putBoolean("serialMode", s.serialMode)
             .putBoolean("keepOriginals", s.keepOriginals)
+            .putBoolean("autoCapture", s.autoCapture)
+            .putString("pinHash", s.pinHash)
+            .putString("pinSalt", s.pinSalt)
             .putInt("ver", 2)
             .apply()
     }

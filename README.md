@@ -32,3 +32,11 @@ günlüğünü (hata satırlarını) yapıştır, düzeltelim.
 - Saç tepesi ölçümü: ML Kit kişi maskesi (yedek: arka plan analizi), saç üstü boşluk varsayılan %3.
 - Sınıf menüsü (⋮): eksik listesini paylaş, e-Okul ZIP (içinde `12345.jpg` adlı dosyalar), dosya adlarını güncelle.
 - Ayarlar: Yedekle / Geri yükle (sınıf listeleri + küçük fotoğraflar).
+
+## Faz 3
+- Kamerada anlık yüz tespiti: yeşil/sarı yüz kutusu ve yönlendirme ("Biraz yaklaşın", "Başı dik tutun"…).
+- Otomatik odak/pozlama: yüze sürekli, ayrıca ekrana dokunarak.
+- Otomatik çekim (anahtar): yüz kılavuza oturup sabit durunca 1,2 sn geri sayım ve çekim; deklanşör sesi + titreşim.
+  Seri çekimde bir önceki öğrenci çerçevedeyken yanlışlıkla çekmemek için yüz çerçeveden çıkıp girince silahlanır.
+- PIN kilidi (Ayarlar → PIN): açılışta ve 30 sn'den uzun arka planda kalınca sorulur.
+- Listeyi CSV/TXT dosyadan alma (UTF-8 ve Windows-1254 desteklenir).
