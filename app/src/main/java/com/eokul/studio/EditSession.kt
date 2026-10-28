@@ -63,7 +63,7 @@ class EditSession(val name: String) {
         box = Box.of(Crop.fitInside(Crop.fromCenter(ncx, ncy, newW, RATIO), iw, ih, RATIO))
     }
 
-    fun setBox(b: Box) {
+    fun moveBox(b: Box) {
         push(box, false)
         box = b.fitInside(iw, ih)
     }

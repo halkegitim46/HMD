@@ -465,7 +465,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val s = session ?: return
         val f = s.faces.getOrNull(index) ?: return
         s.faceFound = true
-        s.setBox(ImageOps.defaultBox(s.iw, s.ih, f, settings))
+        s.moveBox(ImageOps.defaultBox(s.iw, s.ih, f, settings))
     }
 
     fun editorResetToFace() {
@@ -476,7 +476,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val faces = withContext(Dispatchers.Default) { ImageOps.detectFaces(bmp, px) }
             s.faces = faces
             s.faceFound = faces.isNotEmpty()
-            s.setBox(ImageOps.defaultBox(s.iw, s.ih, faces.firstOrNull(), settings))
+            s.moveBox(ImageOps.defaultBox(s.iw, s.ih, faces.firstOrNull(), settings))
         }
     }
 

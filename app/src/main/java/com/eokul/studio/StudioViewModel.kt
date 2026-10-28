@@ -391,13 +391,13 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
         val s = capture?.session ?: return
         val f = s.faces.getOrNull(index) ?: return
         s.faceFound = true
-        s.setBox(ImageOps.defaultBox(s.iw, s.ih, f, settings))
+        s.moveBox(ImageOps.defaultBox(s.iw, s.ih, f, settings))
     }
 
     fun captureEditorResetToFace() {
         val s = capture?.session ?: return
         val f = s.faces.firstOrNull()
-        s.setBox(ImageOps.defaultBox(s.iw, s.ih, f, settings))
+        s.moveBox(ImageOps.defaultBox(s.iw, s.ih, f, settings))
     }
 
     // ------------------------------------------------------------------ kaydetme
