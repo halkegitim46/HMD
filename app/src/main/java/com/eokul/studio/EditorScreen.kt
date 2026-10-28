@@ -136,7 +136,7 @@ fun EditorContent(
                 maxLines = 1,
                 modifier = Modifier.weight(1f)
             )
-            TextButton(onClick = onCancel) { Text("✕", color = Color.White, fontSize = 18.sp) }
+            CloseBtn(onClick = onCancel)
         }
 
         // ---- Tuval: tek parmak = kutuyu taşı, iki parmak = yakınlaştır / uzaklaştır

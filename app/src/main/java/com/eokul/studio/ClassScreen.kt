@@ -82,7 +82,7 @@ fun ClassScreen(studio: StudioViewModel, classId: String) {
             Surface(color = MaterialTheme.colorScheme.primaryContainer, tonalElevation = 2.dp) {
                 Column(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = { studio.back() }) { Text("‹") }
+                        BackBtn(onClick = { studio.back() }, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                         Column(Modifier.weight(1f)) {
                             Text(
                                 cls.name, style = MaterialTheme.typography.titleMedium,
@@ -97,7 +97,7 @@ fun ClassScreen(studio: StudioViewModel, classId: String) {
                         TextButton(onClick = { addOpen = true }) { Text("＋ Öğrenci") }
                         TextButton(onClick = { studio.navigate(Screen.Import(cls.id)) }) { Text("📋 Liste") }
                         Box {
-                            TextButton(onClick = { toolsOpen = true }) { Text("⋮") }
+                            MoreBtn(onClick = { toolsOpen = true }, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                             DropdownMenu(expanded = toolsOpen, onDismissRequest = { toolsOpen = false }) {
                                 DropdownMenuItem(text = { Text("Eksik listesini paylaş") }, onClick = {
                                     toolsOpen = false
@@ -327,7 +327,7 @@ private fun StudentRow(
             )
         }
         Box {
-            TextButton(onClick = { menu = true }) { Text("⋮") }
+            MoreBtn(onClick = { menu = true })
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(text = { Text(if (s.captured) "Yeniden çek" else "Fotoğraf çek") }, onClick = {
                     menu = false

@@ -54,7 +54,7 @@ private val EditedColor = Color(0xFF4F86E8)
 private val DimColor = Color(0xFF8A8F9C)
 
 @Composable
-fun GalleryScreen(vm: AppViewModel) {
+fun GalleryScreen(vm: AppViewModel, onBack: () -> Unit) {
     val folderPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri: Uri? ->
@@ -69,7 +69,7 @@ fun GalleryScreen(vm: AppViewModel) {
     val pickPhotos = { photoPicker.launch(arrayOf("image/*")) }
 
     Column(Modifier.fillMaxSize()) {
-        GalleryHeader(vm, pickFolder, pickPhotos)
+        GalleryHeader(vm, onBack, pickFolder, pickPhotos)
         Box(Modifier.weight(1f).fillMaxWidth()) {
             if (vm.items.isEmpty()) {
                 EmptyState(pickFolder, pickPhotos)
@@ -92,13 +92,14 @@ fun GalleryScreen(vm: AppViewModel) {
 }
 
 @Composable
-private fun GalleryHeader(vm: AppViewModel, pickFolder: () -> Unit, pickPhotos: () -> Unit) {
+private fun GalleryHeader(vm: AppViewModel, onBack: () -> Unit, pickFolder: () -> Unit, pickPhotos: () -> Unit) {
     var menuOpen by remember { mutableStateOf(false) }
     Surface(color = MaterialTheme.colorScheme.primaryContainer, tonalElevation = 2.dp) {
         Row(
-            Modifier.fillMaxWidth().padding(start = 14.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+            Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            BackBtn(onClick = onBack, tint = MaterialTheme.colorScheme.onPrimaryContainer)
             Column(Modifier.weight(1f)) {
                 Text(
                     "E-Okul Foto Studio",
@@ -119,7 +120,7 @@ private fun GalleryHeader(vm: AppViewModel, pickFolder: () -> Unit, pickPhotos: 
             TextButton(onClick = pickFolder, enabled = !vm.saving) { Text("📁 Klasör") }
             TextButton(onClick = pickPhotos, enabled = !vm.saving) { Text("🖼 Fotoğraf") }
             Box {
-                TextButton(onClick = { menuOpen = true }) { Text("⋮", fontSize = 20.sp) }
+                MoreBtn(onClick = { menuOpen = true }, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
                         text = { Text("⚙ Ayarlar ve kırpma") },

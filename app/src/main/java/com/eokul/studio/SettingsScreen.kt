@@ -94,7 +94,7 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onClose) { Text("‹ Geri") }
+            BackBtn(onClick = onClose)
             Text("Ayarlar", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.size(8.dp))

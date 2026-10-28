@@ -190,7 +190,7 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
             Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = { studio.back() }) { Text("✕", color = Color.White, fontSize = 18.sp) }
+            CloseBtn(onClick = { studio.back() })
             Column(Modifier.weight(1f)) {
                 Text(
                     student.name, color = Color.White, fontWeight = FontWeight.Bold,
@@ -202,12 +202,8 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
                     color = Color(0xFFB0B6C8), fontSize = 12.sp
                 )
             }
-            TextButton(onClick = { studio.cameraMove(classId, no, -1) }, enabled = index > 0) {
-                Text("‹", color = if (index > 0) Color.White else Color.Gray, fontSize = 22.sp)
-            }
-            TextButton(onClick = { studio.cameraMove(classId, no, 1) }, enabled = index < cls.students.size - 1) {
-                Text("›", color = if (index < cls.students.size - 1) Color.White else Color.Gray, fontSize = 22.sp)
-            }
+            PrevBtn(onClick = { studio.cameraMove(classId, no, -1) }, enabled = index > 0)
+            NextBtn(onClick = { studio.cameraMove(classId, no, 1) }, enabled = index < cls.students.size - 1)
         }
 
         // ---- Önizleme (3:4) ve kılavuz

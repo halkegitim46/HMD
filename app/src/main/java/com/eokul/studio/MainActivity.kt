@@ -97,7 +97,7 @@ fun AppRoot(vm: AppViewModel, studio: StudioViewModel) {
                 is Screen.CaptureEditor -> CaptureEditorScreen(studio)
                 is Screen.Settings -> SettingsScreen(vm, studio, showRecrop = false, onClose = { studio.back() })
                 is Screen.Batch -> when (vm.route) {
-                    Route.Gallery -> GalleryScreen(vm)
+                    Route.Gallery -> GalleryScreen(vm, onBack = { studio.back() })
                     Route.Editor -> EditorScreen(vm)
                     Route.Settings -> SettingsScreen(vm, studio, showRecrop = true, onClose = { vm.closeSettings() })
                 }

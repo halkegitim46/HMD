@@ -67,7 +67,7 @@ fun ImportScreen(studio: StudioViewModel, classId: String?) {
     Column(Modifier.fillMaxSize()) {
         Surface(color = MaterialTheme.colorScheme.primaryContainer, tonalElevation = 2.dp) {
             Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { studio.back() }) { Text("‹") }
+                BackBtn(onClick = { studio.back() }, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                 Text(
                     if (cls != null) "${cls.name} · liste ekle" else "Yeni sınıf · liste ekle",
                     style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,

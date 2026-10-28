@@ -63,7 +63,7 @@ fun HomeScreen(studio: StudioViewModel) {
                         modifier = Modifier.weight(1f)
                     )
                     TextButton(onClick = { studio.navigate(Screen.Batch) }) { Text("✂ Toplu kırpma") }
-                    TextButton(onClick = { studio.navigate(Screen.Settings) }) { Text("⚙") }
+                    SettingsBtn(onClick = { studio.navigate(Screen.Settings) }, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
             }
 
@@ -202,7 +202,7 @@ private fun ClassCard(c: SchoolClass, onOpen: () -> Unit, onRename: () -> Unit, 
                 )
                 Text("${c.capturedCount}/${c.students.size}", style = MaterialTheme.typography.titleSmall)
                 Box {
-                    TextButton(onClick = { menu = true }) { Text("⋮") }
+                    MoreBtn(onClick = { menu = true })
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                         DropdownMenuItem(text = { Text("Yeniden adlandır") }, onClick = {
                             menu = false
