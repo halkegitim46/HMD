@@ -68,6 +68,29 @@ object Output {
         }
     }
 
+    /** Klasördeki dosyayı yeniden adlandırır; başarılıysa true. */
+    fun renameFile(ctx: Context, tree: Uri, segments: List<String>, oldName: String, newName: String): Boolean {
+        return try {
+            val dir = dirFor(ctx, tree, segments, false) ?: return false
+            val f = dir.findFile(oldName) ?: return false
+            dir.findFile(newName)?.delete()
+            f.renameTo(newName)
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /** Tek dosyayı yeni uzantısız ad ile yeniden adlandırır (uzantı korunur); yeni URI veya null. */
+    fun renameUri(ctx: Context, uri: Uri, newStem: String): Uri? {
+        return try {
+            val df = DocumentFile.fromSingleUri(ctx, uri) ?: return null
+            val ext = (df.name ?: "").substringAfterLast('.', "jpg")
+            if (df.renameTo("$newStem.$ext")) df.uri else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     fun deleteUri(ctx: Context, uri: Uri) {
         try {
             DocumentFile.fromSingleUri(ctx, uri)?.delete()

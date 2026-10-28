@@ -1,149 +1,113 @@
 package com.eokul.studio.core;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * Çekim kalitesi ölçümleri ve uyarı kuralları.
- *
- * Eşikler deneme amaçlıdır; gerçek telefonda "hassasiyet" ayarıyla (0 gevşek, 1 normal, 2 sıkı) ayarlanır.
+ * Kırpılacak alanın hızlı kalite denetimi: bulanıklık, aşırı karanlık / parlaklık.
+ * Bulanıklık ölçüsü içerikten bağımsızdır: görüntü 3x3 ortalamayla hafifçe bulanıklaştırıldığında Laplace
+ * varyansının ne kadarının kaldığına bakılır (keskin ≈ 0.10, orta bulanık ≈ 0.27, çok bulanık ≥ 0.4).
  */
 public final class Quality {
     private Quality() {}
 
-    public static final String NO_FACE = "NO_FACE";
-    public static final String MULTI_FACE = "MULTI_FACE";
-    public static final String EYES_CLOSED = "EYES_CLOSED";
-    public static final String HEAD_TURNED = "HEAD_TURNED";
-    public static final String HEAD_TILT = "HEAD_TILT";
-    public static final String HEAD_PITCH = "HEAD_PITCH";
-    public static final String BLUR = "BLUR";
-    public static final String DARK = "DARK";
-    public static final String BRIGHT = "BRIGHT";
-    public static final String SMALL = "SMALL";
-    public static final String CUT = "CUT";
+    public static final double BLUR_LIMIT = 0.28;
+    public static final double DARK_LIMIT = 70.0;
+    public static final double BRIGHT_LIMIT = 190.0;
 
-    /** Ölçümler. Bilinmeyen değerler için NaN / -1 kullanılır. */
-    public static final class Metrics {
-        public int faceCount;
-        public double eyeOpen = -1;     // iki gözün küçüğü, 0..1; bilinmiyorsa -1
-        public double yaw = 0, pitch = 0, roll = 0;
-        public double sharpness = Double.NaN;
-        public double luma = Double.NaN;
-        public double clipped = 0;      // yüz bölgesinde patlamış (≥250) piksel oranı
-        public double cropWidth = Double.NaN;   // kırpma kutusunun genişliği (çalışma görüntüsü pikseli)
-        public boolean faceCut = false;         // yüz kutusu görüntü kenarına değiyor
+    public static final class Report {
+        public final double blurRatio;
+        public final double brightness;
+        public final double contrast;
+
+        Report(double blurRatio, double brightness, double contrast) {
+            this.blurRatio = blurRatio;
+            this.brightness = brightness;
+            this.contrast = contrast;
+        }
+
+        public boolean blurry() { return blurRatio > BLUR_LIMIT; }
+        public boolean dark() { return brightness < DARK_LIMIT; }
+        public boolean bright() { return brightness > BRIGHT_LIMIT; }
     }
 
-    private static final double[] EYE = {0.20, 0.30, 0.45};
-    private static final double[] YAW = {25, 18, 12};
-    private static final double[] ROLL = {18, 12, 8};
-    private static final double[] PITCH = {22, 16, 10};
-    private static final double[] BLUR_T = {25, 45, 70};
-    private static final double[] DARK_T = {45, 65, 85};
-    private static final double[] BRIGHT_T = {225, 210, 195};
-    private static final double[] CLIP_T = {0.25, 0.15, 0.08};
-    private static final double[] SMALL_T = {1.0, 1.5, 2.0};
+    private static final int W = 160;
 
-    public static List<String> evaluate(Metrics m, int sensitivity, int targetW) {
-        int s = Math.max(0, Math.min(2, sensitivity));
-        List<String> w = new ArrayList<>();
-        if (m.faceCount == 0) {
-            w.add(NO_FACE);
-            return w;   // yüz yokken diğer ölçümler anlamsız
-        }
-        if (m.faceCount > 1) w.add(MULTI_FACE);
-        if (m.eyeOpen >= 0 && m.eyeOpen < EYE[s]) w.add(EYES_CLOSED);
-        if (Math.abs(m.yaw) > YAW[s]) w.add(HEAD_TURNED);
-        if (Math.abs(m.roll) > ROLL[s]) w.add(HEAD_TILT);
-        if (Math.abs(m.pitch) > PITCH[s]) w.add(HEAD_PITCH);
-        if (!Double.isNaN(m.sharpness) && m.sharpness < BLUR_T[s]) w.add(BLUR);
-        if (!Double.isNaN(m.luma)) {
-            if (m.luma < DARK_T[s]) w.add(DARK);
-            else if (m.luma > BRIGHT_T[s] || m.clipped > CLIP_T[s]) w.add(BRIGHT);
-        }
-        if (!Double.isNaN(m.cropWidth) && m.cropWidth < targetW * SMALL_T[s]) w.add(SMALL);
-        if (m.faceCut) w.add(CUT);
-        return w;
-    }
-
-    // ------------------------------------------------------------------ ölçümler
-    private static final int SAMPLE = 128;
-
-    /** Yüz bölgesini en fazla 128 px'e küçültüp gri tonlamaya çevirir. */
-    private static double[] grayRegion(int[] argb, int iw, int ih, double[] box, int[] outSize) {
-        int x1 = (int) Math.max(0, Math.floor(box[0])), y1 = (int) Math.max(0, Math.floor(box[1]));
-        int x2 = (int) Math.min(iw, Math.ceil(box[2])), y2 = (int) Math.min(ih, Math.ceil(box[3]));
-        int rw = x2 - x1, rh = y2 - y1;
-        if (rw < 8 || rh < 8) return null;
-        double k = Math.min(1.0, (double) SAMPLE / Math.max(rw, rh));
-        int dw = Math.max(4, (int) Math.round(rw * k)), dh = Math.max(4, (int) Math.round(rh * k));
-        double sx = (double) rw / dw, sy = (double) rh / dh;
-        double[] g = new double[dw * dh];
-        for (int y = 0; y < dh; y++) {
-            double ya = y * sy, yb = ya + sy;
-            int ys = (int) Math.floor(ya), ye = Math.min(rh, (int) Math.ceil(yb));
-            for (int x = 0; x < dw; x++) {
-                double xa = x * sx, xb = xa + sx;
-                int xs = (int) Math.floor(xa), xe = Math.min(rw, (int) Math.ceil(xb));
-                double acc = 0, ws = 0;
-                for (int yy = ys; yy < ye; yy++) {
-                    double wy = Math.min(yb, yy + 1) - Math.max(ya, yy);
-                    for (int xx = xs; xx < xe; xx++) {
-                        double wx = Math.min(xb, xx + 1) - Math.max(xa, xx);
-                        int p = argb[(y1 + yy) * iw + x1 + xx];
-                        double lum = 0.299 * ((p >> 16) & 0xFF) + 0.587 * ((p >> 8) & 0xFF) + 0.114 * (p & 0xFF);
-                        acc += lum * wx * wy;
-                        ws += wx * wy;
+    /** [box] = {x1,y1,x2,y2}: kırpma alanı (kaynak piksel koordinatları). */
+    public static Report analyze(int[] argb, int iw, int ih, double[] box) {
+        double bw = box[2] - box[0], bh = box[3] - box[1];
+        int H = Math.max(8, (int) Math.round(W * bh / Math.max(bw, 1.0)));
+        double[] g = new double[W * H];
+        // Alan ortalamalı küçültme (kutu süzgeci)
+        for (int y = 0; y < H; y++) {
+            double sy1 = box[1] + bh * y / H, sy2 = box[1] + bh * (y + 1) / H;
+            int y1 = clamp((int) Math.floor(sy1), ih), y2 = Math.max(y1 + 1, clamp((int) Math.ceil(sy2), ih + 1));
+            for (int x = 0; x < W; x++) {
+                double sx1 = box[0] + bw * x / W, sx2 = box[0] + bw * (x + 1) / W;
+                int x1 = clamp((int) Math.floor(sx1), iw), x2 = Math.max(x1 + 1, clamp((int) Math.ceil(sx2), iw + 1));
+                double sum = 0;
+                int n = 0;
+                for (int yy = y1; yy < Math.min(y2, ih); yy++) {
+                    for (int xx = x1; xx < Math.min(x2, iw); xx++) {
+                        int p = argb[yy * iw + xx];
+                        sum += 0.299 * ((p >> 16) & 255) + 0.587 * ((p >> 8) & 255) + 0.114 * (p & 255);
+                        n++;
                     }
                 }
-                g[y * dw + x] = acc / ws;
+                g[y * W + x] = n > 0 ? sum / n : 0;
             }
         }
-        outSize[0] = dw;
-        outSize[1] = dh;
-        return g;
-    }
+        double v0 = lapVar(g, W, H);
+        double[] b = box3(g, W, H);
+        double v1 = lapVar(b, W, H);
+        double ratio = v0 < 1e-6 ? 0.0 : v1 / v0;
 
-    /** Yüz bölgesinde Laplace varyansı (büyük = keskin). Bölge 128 px'e normalize edildiği için ölçekten bağımsızdır. */
-    public static double sharpness(int[] argb, int iw, int ih, double[] faceBox) {
-        int[] sz = new int[2];
-        double[] g = grayRegion(argb, iw, ih, faceBox, sz);
-        if (g == null) return Double.NaN;
-        int w = sz[0], h = sz[1];
-        if (w < 3 || h < 3) return Double.NaN;
-        double sum = 0, sum2 = 0;
+        int cx1 = (int) (W * 0.2), cx2 = (int) (W * 0.8), cy1 = (int) (H * 0.2), cy2 = (int) (H * 0.8);
+        double s = 0, s2 = 0;
         int n = 0;
-        for (int y = 1; y < h - 1; y++) {
-            for (int x = 1; x < w - 1; x++) {
-                double l = g[(y - 1) * w + x] + g[(y + 1) * w + x] + g[y * w + x - 1] + g[y * w + x + 1]
-                        - 4 * g[y * w + x];
-                sum += l;
-                sum2 += l * l;
+        for (int y = cy1; y < cy2; y++) {
+            for (int x = cx1; x < cx2; x++) {
+                double v = g[y * W + x];
+                s += v;
+                s2 += v * v;
                 n++;
             }
         }
-        double mean = sum / n;
-        return sum2 / n - mean * mean;
+        double mean = s / n;
+        double sd = Math.sqrt(Math.max(0, s2 / n - mean * mean));
+        return new Report(ratio, mean, sd);
     }
 
-    /** Yüz bölgesinin ortalama parlaklığı (0..255). */
-    public static double meanLuma(int[] argb, int iw, int ih, double[] faceBox) {
-        int[] sz = new int[2];
-        double[] g = grayRegion(argb, iw, ih, faceBox, sz);
-        if (g == null) return Double.NaN;
-        double s = 0;
-        for (double v : g) s += v;
-        return s / g.length;
+    private static int clamp(int v, int max) {
+        return Math.max(0, Math.min(v, max - 1 < 0 ? 0 : max));
     }
 
-    /** Yüz bölgesinde parlaklığı ≥250 olan piksellerin oranı. */
-    public static double clippedFraction(int[] argb, int iw, int ih, double[] faceBox) {
-        int[] sz = new int[2];
-        double[] g = grayRegion(argb, iw, ih, faceBox, sz);
-        if (g == null) return 0;
-        int c = 0;
-        for (double v : g) if (v >= 250) c++;
-        return (double) c / g.length;
+    private static double lapVar(double[] g, int w, int h) {
+        double s = 0, s2 = 0;
+        int n = 0;
+        for (int y = 1; y < h - 1; y++) {
+            for (int x = 1; x < w - 1; x++) {
+                double l = 4 * g[y * w + x] - g[(y - 1) * w + x] - g[(y + 1) * w + x] - g[y * w + x - 1] - g[y * w + x + 1];
+                s += l;
+                s2 += l * l;
+                n++;
+            }
+        }
+        double m = s / n;
+        return s2 / n - m * m;
+    }
+
+    private static double[] box3(double[] g, int w, int h) {
+        double[] o = new double[w * h];
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                double s = 0;
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dx = -1; dx <= 1; dx++) {
+                        int yy = Math.min(h - 1, Math.max(0, y + dy)), xx = Math.min(w - 1, Math.max(0, x + dx));
+                        s += g[yy * w + xx];
+                    }
+                }
+                o[y * w + x] = s / 9;
+            }
+        }
+        return o;
     }
 }

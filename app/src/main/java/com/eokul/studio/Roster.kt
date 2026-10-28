@@ -110,9 +110,15 @@ object Naming {
 /** Sınıf ve öğrenci verisi (JSON, atomik yazım). */
 class RosterStore(private val file: File) {
 
-    fun load(): List<SchoolClass> {
+    fun load(): List<SchoolClass> = try {
+        parse(file.readText())
+    } catch (e: Exception) {
+        emptyList()
+    }
+
+    fun parse(text: String): List<SchoolClass> {
         return try {
-            val root = JSONObject(file.readText())
+            val root = JSONObject(text)
             val arr = root.optJSONArray("classes") ?: return emptyList()
             val out = ArrayList<SchoolClass>()
             for (i in 0 until arr.length()) {

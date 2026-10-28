@@ -13,7 +13,6 @@ Telefonla öğrenci fotoğrafı çek → e-Okul ölçüsüne (133×171) otomatik
 ```
 <Kayıt klasörü>/9-A/12345-Ayşe Yılmaz.jpg          (133×171, arşiv adı)
 <Kayıt klasörü>/9-A/Orijinaller/12345-Ayşe Yılmaz.jpg   (tam çözünürlüklü orijinal)
-<Kayıt klasörü>/E-Okul/9-A/12345.jpg               (e-Okul'a yüklenecek, yalnızca numara)
 ```
 Çıktı: 4:4:4 JPEG, kalite 100, 300 DPI, sRGB profili gömülü, en az 20 KB.
 
@@ -27,3 +26,9 @@ Telefonla öğrenci fotoğrafı çek → e-Okul ölçüsüne (133×171) otomatik
 Kotlin/Compose/CameraX kodu bu ortamda derlenemedi (Android SDK'ya erişim yok). Çekirdek algoritmalar (kırpma, yeniden
 boyutlandırma, JPEG kodlayıcı, liste ayrıştırıcı) Java ile birebir test edildi. İlk derlemede hata çıkarsa Actions
 günlüğünü (hata satırlarını) yapıştır, düzeltelim.
+
+## Eklenenler (Faz 2)
+- Kalite uyarıları: bulanık, çok karanlık / parlak, baş eğik, yüz dönük (inceleme ekranında).
+- Saç tepesi ölçümü: ML Kit kişi maskesi (yedek: arka plan analizi), saç üstü boşluk varsayılan %3.
+- Sınıf menüsü (⋮): eksik listesini paylaş, e-Okul ZIP (içinde `12345.jpg` adlı dosyalar), dosya adlarını güncelle.
+- Ayarlar: Yedekle / Geri yükle (sınıf listeleri + küçük fotoğraflar).

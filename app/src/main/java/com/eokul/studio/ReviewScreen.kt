@@ -20,6 +20,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import com.eokul.studio.core.Quality
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,6 +51,18 @@ fun ReviewScreen(studio: StudioViewModel) {
     val student = cls?.students?.firstOrNull { it.no == cap.no }
     val s = cap.session
     val preview = rememberPreview(s, studio.settings)
+    val quality by produceState<Quality.Report?>(null, s, s?.box, s?.loading) {
+        val ss = s
+        val px = ss?.pixels
+        if (ss == null || px == null || ss.loading) {
+            value = null
+        } else {
+            val box = ss.box
+            val iw = ss.iw
+            val ih = ss.ih
+            value = withContext(Dispatchers.Default) { ImageOps.quality(px, iw, ih, box) }
+        }
+    }
 
     Column(Modifier.fillMaxSize().background(Bg).padding(12.dp)) {
         Text(
@@ -90,6 +107,17 @@ fun ReviewScreen(studio: StudioViewModel) {
             if (s.faces.isEmpty()) warnings.add("⚠ Yüz bulunamadı — alanı elle ayarlayın veya yeniden çekin.")
             if (s.faces.size > 1) warnings.add("⚠ ${s.faces.size} yüz algılandı — en büyüğü seçildi. Doğruluğunu kontrol edin.")
             if (s.box.width < TARGET_W) warnings.add("⚠ Kırpılan alan hedef çözünürlükten küçük; görüntü bulanık olabilir.")
+            val q = quality
+            if (q != null) {
+                if (q.blurry()) warnings.add("⚠ Fotoğraf bulanık görünüyor — yeniden çekmeniz önerilir.")
+                if (q.dark()) warnings.add("⚠ Fotoğraf çok karanlık — daha aydınlık bir yerde çekin.")
+                if (q.bright()) warnings.add("⚠ Fotoğraf aşırı parlak — ışığı azaltın.")
+            }
+            val f0 = s.faces.firstOrNull()
+            if (f0 != null) {
+                if (Math.abs(f0.roll) > 10f) warnings.add("⚠ Baş yana eğik (${Math.abs(f0.roll).toInt()}°) — başı dik tutturun.")
+                if (Math.abs(f0.yaw) > 15f) warnings.add("⚠ Yüz kameraya dönük değil (${Math.abs(f0.yaw).toInt()}°) — karşıdan çekin.")
+            }
             for (w in warnings) Text(w, color = Warn, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
             val kb = (preview?.second ?: 0) / 1024.0
             Text(

@@ -39,6 +39,10 @@ import kotlin.math.roundToInt
 @Composable
 fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolean, onClose: () -> Unit) {
     BackHandler { onClose() }
+    var confirmRestore by remember { mutableStateOf<Uri?>(null) }
+    val restorePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) confirmRestore = uri
+    }
     val rootPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
         if (uri != null) studio.setRootFolder(uri)
     }
@@ -54,7 +58,6 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
     var embed by remember { mutableStateOf(cur.embedSrgb) }
     var serial by remember { mutableStateOf(cur.serialMode) }
     var keepOrig by remember { mutableStateOf(cur.keepOriginals) }
-    var eokulCopy by remember { mutableStateOf(cur.eokulCopy) }
     var error by remember { mutableStateOf<String?>(null) }
 
     fun build(): Settings? {
@@ -77,7 +80,6 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
         return vm.settings.copy(
             serialMode = serial,
             keepOriginals = keepOrig,
-            eokulCopy = eokulCopy,
             topGap = (topGap * 100.0).roundToInt() / 100.0,
             headFrac = (headFrac * 100.0).roundToInt() / 100.0,
             jpegQuality = quality.roundToInt(),
@@ -107,7 +109,7 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
         Spacer(Modifier.size(4.dp))
         OutlinedButton(onClick = { rootPicker.launch(null) }) { Text("Klasör seç / değiştir") }
         Text(
-            "Yapı: Sınıf/12345-Ad Soyad.jpg · Sınıf/Orijinaller/ · E-Okul/Sınıf/12345.jpg",
+            "Yapı: Sınıf/12345-Ad Soyad.jpg · Sınıf/Orijinaller/12345-Ad Soyad.jpg",
             style = MaterialTheme.typography.bodySmall, color = Color.Gray
         )
         Spacer(Modifier.size(8.dp))
@@ -119,10 +121,18 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             Switch(checked = keepOrig, onCheckedChange = { keepOrig = it })
             Text("  Tam çözünürlüklü orijinali sakla", style = MaterialTheme.typography.bodyMedium)
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(checked = eokulCopy, onCheckedChange = { eokulCopy = it })
-            Text("  E-Okul klasörüne numara adlı kopya yaz", style = MaterialTheme.typography.bodyMedium)
+
+        Spacer(Modifier.size(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { studio.backup() }) { Text("💾 Yedekle") }
+            OutlinedButton(onClick = { restorePicker.launch(arrayOf("application/zip", "application/octet-stream")) }) {
+                Text("♻ Geri yükle")
+            }
         }
+        Text(
+            "Yedek: sınıf listeleri ve küçük fotoğraflar kayıt klasörüne Yedek-tarih.zip olarak yazılır.",
+            style = MaterialTheme.typography.bodySmall, color = Color.Gray
+        )
 
         Spacer(Modifier.size(20.dp))
 
@@ -130,7 +140,7 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
         Text("✂  Kırpma", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.size(6.dp))
         Text("Saç üstü boşluk: %${(topGap * 100).roundToInt()}", style = MaterialTheme.typography.bodyMedium)
-        Slider(value = topGap, onValueChange = { topGap = it }, valueRange = 0.03f..0.20f, steps = 16)
+        Slider(value = topGap, onValueChange = { topGap = it }, valueRange = 0.01f..0.10f, steps = 8)
         Text(
             "Saçın tepesi ile fotoğrafın üst kenarı arasındaki sabit boşluk (kırpma yüksekliğinin oranı). " +
                 "Tüm öğrencilerde aynı oranda uygulanır.",
@@ -224,5 +234,21 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             style = MaterialTheme.typography.bodySmall, color = Color.Gray
         )
         Spacer(Modifier.size(24.dp))
+    }
+
+    val rs = confirmRestore
+    if (rs != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmRestore = null },
+            title = { Text("Yedekten geri yüklensin mi?") },
+            text = { Text("Uygulamadaki tüm sınıf listeleri ve küçük fotoğraflar yedekteki ile değiştirilir.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmRestore = null
+                    studio.restore(rs)
+                }) { Text("Geri yükle") }
+            },
+            dismissButton = { TextButton(onClick = { confirmRestore = null }) { Text("Vazgeç") } }
+        )
     }
 }

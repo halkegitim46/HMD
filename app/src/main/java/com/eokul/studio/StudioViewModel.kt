@@ -73,6 +73,10 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
         refreshRootName()
     }
 
+    fun toast(msg: String) {
+        say(msg)
+    }
+
     private fun say(msg: String) {
         messages.tryEmit(msg)
     }
@@ -400,6 +404,173 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
         s.moveBox(ImageOps.defaultBox(s.iw, s.ih, f, settings))
     }
 
+    // ------------------------------------------------------------------ araçlar (dışa aktarma, yedek, adlar)
+    private fun stamp(): String =
+        java.text.SimpleDateFormat("yyyyMMdd-HHmm", java.util.Locale.US).format(java.util.Date())
+
+    /** Çekilmiş öğrencilerin fotoğraflarını `12345.jpg` adlarıyla tek bir ZIP'e yazar (e-Okul yüklemesi için). */
+    fun exportEokulZip(classId: String) {
+        val rootStr = settings.rootUri
+        if (rootStr == null) {
+            say("Önce kayıt klasörünü seçin")
+            return
+        }
+        val cls = classById(classId) ?: return
+        val root = Uri.parse(rootStr)
+        viewModelScope.launch {
+            try {
+                val n = withContext(Dispatchers.IO) {
+                    val bos = java.io.ByteArrayOutputStream()
+                    var count = 0
+                    java.util.zip.ZipOutputStream(bos).use { zip ->
+                        for (st in cls.students) {
+                            if (!st.captured) continue
+                            val f = Naming.privatePhoto(ctx, cls.id, st.no)
+                            if (!f.exists()) continue
+                            zip.putNextEntry(java.util.zip.ZipEntry("${st.no}.jpg"))
+                            zip.write(f.readBytes())
+                            zip.closeEntry()
+                            count++
+                        }
+                    }
+                    if (count > 0) {
+                        val name = RosterParser.sanitizeFileName(cls.name) + "-eokul.zip"
+                        Output.writePath(ctx, root, emptyList(), name, "application/zip", bos.toByteArray())
+                    }
+                    count
+                }
+                say(if (n == 0) "Dışa aktarılacak fotoğraf yok" else "✓ $n fotoğraf → ${cls.name}-eokul.zip (numara adlı)")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                say("ZIP oluşturulamadı: ${e.message ?: e.javaClass.simpleName}")
+            }
+        }
+    }
+
+    /** Sınıf listesi + küçük fotoğraflar: kayıt klasörüne Yedek-tarih.zip. */
+    fun backup() {
+        val rootStr = settings.rootUri
+        if (rootStr == null) {
+            say("Önce kayıt klasörünü seçin")
+            return
+        }
+        val root = Uri.parse(rootStr)
+        val snap = classes.toList()
+        viewModelScope.launch {
+            try {
+                val name = withContext(Dispatchers.IO) {
+                    storeMutex.withLock { store.save(snap) }
+                    val bos = java.io.ByteArrayOutputStream()
+                    java.util.zip.ZipOutputStream(bos).use { zip ->
+                        val rf = File(ctx.filesDir, "roster.json")
+                        if (rf.exists()) {
+                            zip.putNextEntry(java.util.zip.ZipEntry("roster.json"))
+                            zip.write(rf.readBytes())
+                            zip.closeEntry()
+                        }
+                        val photos = File(ctx.filesDir, "photos")
+                        photos.walkTopDown().filter { it.isFile }.forEach { f ->
+                            val rel = f.relativeTo(ctx.filesDir).path.replace('\\', '/')
+                            zip.putNextEntry(java.util.zip.ZipEntry(rel))
+                            zip.write(f.readBytes())
+                            zip.closeEntry()
+                        }
+                    }
+                    val n = "Yedek-${stamp()}.zip"
+                    Output.writePath(ctx, root, emptyList(), n, "application/zip", bos.toByteArray())
+                    n
+                }
+                say("✓ Yedek alındı: $name")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                say("Yedek alınamadı: ${e.message ?: e.javaClass.simpleName}")
+            }
+        }
+    }
+
+    /** Yedek ZIP'inden tüm sınıfları ve küçük fotoğrafları geri yükler (mevcut liste değiştirilir). */
+    fun restore(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val loaded = withContext(Dispatchers.IO) {
+                    val photosDir = File(ctx.filesDir, "photos").canonicalFile
+                    var json: String? = null
+                    val files = ArrayList<Pair<File, ByteArray>>()
+                    val input = ctx.contentResolver.openInputStream(uri) ?: throw IOException("Dosya açılamadı")
+                    java.util.zip.ZipInputStream(input).use { zip ->
+                        while (true) {
+                            val e = zip.nextEntry ?: break
+                            if (e.isDirectory) continue
+                            val data = zip.readBytes()
+                            if (e.name == "roster.json") {
+                                json = String(data, Charsets.UTF_8)
+                            } else if (e.name.startsWith("photos/")) {
+                                val target = File(ctx.filesDir, e.name).canonicalFile
+                                if (target.path.startsWith(photosDir.path + File.separator)) files.add(target to data)
+                            }
+                        }
+                    }
+                    val text = json ?: throw IOException("Yedekte roster.json yok")
+                    val parsed = store.parse(text)
+                    if (parsed.isEmpty()) throw IOException("Yedekte sınıf bulunamadı")
+                    photosDir.deleteRecursively()
+                    for ((f, d) in files) {
+                        f.parentFile?.mkdirs()
+                        f.writeBytes(d)
+                    }
+                    parsed
+                }
+                classes.clear()
+                classes.addAll(loaded)
+                persist()
+                say("✓ ${loaded.size} sınıf geri yüklendi")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                say("Geri yüklenemedi: ${e.message ?: e.javaClass.simpleName}")
+            }
+        }
+    }
+
+    /** Adı değişen öğrencilerin kayıt klasöründeki dosya adlarını güncel ad soyada göre yeniden adlandırır. */
+    fun staleNameCount(classId: String): Int {
+        val c = classById(classId) ?: return 0
+        return c.students.count { it.captured && it.savedStem != null && it.savedStem != RosterParser.studentStem(it.no, it.name) }
+    }
+
+    fun syncFileNames(classId: String) {
+        val cls = classById(classId) ?: return
+        val rootStr = settings.rootUri ?: run {
+            say("Önce kayıt klasörünü seçin")
+            return
+        }
+        val root = Uri.parse(rootStr)
+        viewModelScope.launch {
+            val dir = RosterParser.sanitizeFileName(cls.name)
+            var done = 0
+            val results = withContext(Dispatchers.IO) {
+                val out = ArrayList<Triple<String, String, String?>>()   // no, yeni stem, yeni orijinal uri
+                for (st in cls.students) {
+                    val old = st.savedStem ?: continue
+                    val stem = RosterParser.studentStem(st.no, st.name)
+                    if (!st.captured || old == stem) continue
+                    if (Output.renameFile(ctx, root, listOf(dir), "$old.jpg", "$stem.jpg")) {
+                        val nu = st.origUri?.let { Output.renameUri(ctx, Uri.parse(it), stem) }
+                        out.add(Triple(st.no, stem, nu?.toString() ?: st.origUri))
+                    }
+                }
+                out
+            }
+            for ((no, stem, orig) in results) {
+                updateStudent(classId, no) { it.copy(savedStem = stem, origUri = orig) }
+                done++
+            }
+            say(if (done == 0) "Güncellenecek dosya yok" else "✓ $done dosya yeniden adlandırıldı")
+        }
+    }
+
     // ------------------------------------------------------------------ kaydetme
     private class Saved(val origUri: String?, val stem: String)
 
@@ -470,9 +641,6 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
         val jpeg = ImageOps.render(ctx, px, iw, ih, box, set)
 
         Output.writePath(ctx, root, listOf(clsDir), "$stem.jpg", "image/jpeg", jpeg)
-        if (set.eokulCopy) {
-            Output.writePath(ctx, root, listOf(EOKUL_DIR, clsDir), "${st.no}.jpg", "image/jpeg", jpeg)
-        }
 
         var origUri = st.origUri
         if (!cap.fromSaved && set.keepOriginals) {

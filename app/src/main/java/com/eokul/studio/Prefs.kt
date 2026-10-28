@@ -7,7 +7,7 @@ import androidx.compose.runtime.setValue
 import com.eokul.studio.core.Crop
 
 data class Settings(
-    val topGap: Double = 0.10,
+    val topGap: Double = 0.03,
     val headFrac: Double = 0.62,
     val jpegQuality: Int = 100,
     val minKb: Int = 20,
@@ -19,9 +19,7 @@ data class Settings(
     /** Onaydan sonra sıradaki öğrenciye otomatik geç. */
     val serialMode: Boolean = true,
     /** Tam çözünürlüklü orijinal fotoğrafı "Orijinaller" klasöründe sakla. */
-    val keepOriginals: Boolean = true,
-    /** E-Okul klasörüne yalnızca numara adlı kopya yaz (12345.jpg). */
-    val eokulCopy: Boolean = true
+    val keepOriginals: Boolean = true
 ) {
     fun cropParams(): Crop.Params {
         val p = Crop.Params()
@@ -46,7 +44,7 @@ class Prefs(context: Context) {
         } ?: d.nameRegex
         val outDir = sp.getString("outputDir", null)?.trim()?.takeIf { it.isNotEmpty() } ?: d.outputDir
         return Settings(
-            topGap = (sp.getString("topGap", null)?.toDoubleOrNull() ?: d.topGap).coerceIn(0.02, 0.25),
+            topGap = (if (sp.getInt("ver", 1) < 2) d.topGap else (sp.getString("topGap", null)?.toDoubleOrNull() ?: d.topGap)).coerceIn(0.01, 0.25),
             headFrac = (sp.getString("headFrac", null)?.toDoubleOrNull() ?: d.headFrac).coerceIn(0.45, 0.80),
             jpegQuality = sp.getInt("jpegQuality", d.jpegQuality).coerceIn(70, 100),
             minKb = sp.getInt("minKb", d.minKb).coerceIn(1, 500),
@@ -55,8 +53,7 @@ class Prefs(context: Context) {
             outputDir = outDir,
             rootUri = sp.getString("rootUri", null)?.takeIf { it.isNotBlank() },
             serialMode = sp.getBoolean("serialMode", d.serialMode),
-            keepOriginals = sp.getBoolean("keepOriginals", d.keepOriginals),
-            eokulCopy = sp.getBoolean("eokulCopy", d.eokulCopy)
+            keepOriginals = sp.getBoolean("keepOriginals", d.keepOriginals)
         )
     }
 
@@ -72,7 +69,7 @@ class Prefs(context: Context) {
             .putString("rootUri", s.rootUri)
             .putBoolean("serialMode", s.serialMode)
             .putBoolean("keepOriginals", s.keepOriginals)
-            .putBoolean("eokulCopy", s.eokulCopy)
+            .putInt("ver", 2)
             .apply()
     }
 }

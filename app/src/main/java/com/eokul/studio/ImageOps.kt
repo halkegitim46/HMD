@@ -13,9 +13,12 @@ import com.eokul.studio.core.Crop
 import com.eokul.studio.core.HeadTop
 import com.eokul.studio.core.JpegEncoder
 import com.eokul.studio.core.Lanczos
+import com.eokul.studio.core.Quality
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
+import com.google.mlkit.vision.segmentation.Segmentation
+import com.google.mlkit.vision.segmentation.selfie.SelfieSegmenterOptions
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.IOException
 import kotlin.coroutines.resume
@@ -36,14 +39,47 @@ object Faces {
         )
     }
 
+    private val segmenter by lazy {
+        Segmentation.getClient(
+            SelfieSegmenterOptions.Builder()
+                .setDetectorMode(SelfieSegmenterOptions.SINGLE_IMAGE_MODE)
+                .build()
+        )
+    }
+
+    /** Kişi maskesi (verilen bitmap boyutunda). Hata olursa null döner. */
+    suspend fun segment(bmp: Bitmap): PersonMask? = suspendCancellableCoroutine { cont ->
+        try {
+            segmenter.process(InputImage.fromBitmap(bmp, 0))
+                .addOnSuccessListener { mask ->
+                    try {
+                        val buf = mask.buffer
+                        buf.rewind()
+                        val n = mask.width * mask.height
+                        val arr = FloatArray(n)
+                        for (i in 0 until n) arr[i] = buf.float
+                        cont.resume(PersonMask(mask.width, mask.height, arr))
+                    } catch (e: Exception) {
+                        cont.resume(null)
+                    }
+                }
+                .addOnFailureListener { cont.resume(null) }
+        } catch (e: Exception) {
+            cont.resume(null)
+        }
+    }
+
     /** Yüz kutuları (verilen bitmap koordinatlarında). Hata olursa boş liste döner. */
-    suspend fun detect(bmp: Bitmap): List<Box> = suspendCancellableCoroutine { cont ->
+    suspend fun detect(bmp: Bitmap): List<RawFace> = suspendCancellableCoroutine { cont ->
         try {
             detector.process(InputImage.fromBitmap(bmp, 0))
                 .addOnSuccessListener { faces ->
                     val boxes = faces.map { f ->
                         val r = f.boundingBox
-                        Box(r.left.toDouble(), r.top.toDouble(), r.right.toDouble(), r.bottom.toDouble())
+                        RawFace(
+                            Box(r.left.toDouble(), r.top.toDouble(), r.right.toDouble(), r.bottom.toDouble()),
+                            f.headEulerAngleZ, f.headEulerAngleY
+                        )
                     }
                     cont.resume(boxes)
                 }
@@ -55,6 +91,12 @@ object Faces {
         }
     }
 }
+
+/** ML Kit yüzü: kutu + baş eğikliği (roll) ve dönüklüğü (yaw), derece. */
+class RawFace(val box: Box, val roll: Float, val yaw: Float)
+
+/** Kişi/arka plan maskesi (0..1 güven değerleri). */
+class PersonMask(val w: Int, val h: Int, val data: FloatArray)
 
 object ImageOps {
     /** Çalışma görüntüsünün en uzun kenarı (bellek için); çıktı yalnızca 133x171 olduğundan yeterlidir. */
@@ -136,6 +178,43 @@ object ImageOps {
         return bmp
     }
 
+    /**
+     * Yüzün üst kenarından yukarı doğru, kişi maskesi kesilene kadar çıkar; saç (veya şapka) tepesinin y'sini
+     * [b] ile aynı koordinat sisteminde döndürür. Güvenilir değilse NaN.
+     */
+    private fun maskHeadTop(m: PersonMask, b: Box): Double {
+        val fw = b.width
+        val x1 = (b.cx - 0.35 * fw).toInt().coerceIn(0, m.w - 1)
+        val x2 = (b.cx + 0.35 * fw).toInt().coerceIn(x1 + 1, m.w)
+        val bandW = (x2 - x1).coerceAtLeast(1)
+        fun frac(y: Int): Double {
+            var n = 0
+            val base = y * m.w
+            for (x in x1 until x2) if (m.data[base + x] > 0.5f) n++
+            return n.toDouble() / bandW
+        }
+        val y0 = b.y1.toInt().coerceIn(0, m.h - 1)
+        // Yüzün üst kenarında kişi maskesi yoksa maske bu yüzde güvenilmezdir
+        if (frac(minOf(m.h - 1, y0 + (b.height * 0.1).toInt())) < 0.6) return Double.NaN
+        var top = y0
+        var misses = 0
+        var y = y0
+        while (y > 0) {
+            y--
+            if (frac(y) >= 0.12) {
+                top = y
+                misses = 0
+            } else {
+                misses++
+                if (misses >= 3) break
+            }
+        }
+        val unit = Crop.faceUnit(b.toArray())
+        val rise = b.y1 - top
+        // Saç yüz üstünden en fazla ~1.1 yüz birimi yukarıda olabilir; aksi halde maske taşmıştır
+        return if (rise > unit * 1.1) Double.NaN else top.toDouble()
+    }
+
     fun pixels(bmp: Bitmap): IntArray {
         val a = IntArray(bmp.width * bmp.height)
         bmp.getPixels(a, 0, bmp.width, 0, 0, bmp.width, bmp.height)
@@ -153,30 +232,40 @@ object ImageOps {
             bmp
         }
         val boxes = Faces.detect(det)
+        val mask = if (boxes.isEmpty()) null else Faces.segment(det)
         if (det !== bmp) det.recycle()
-        return boxes.map { b ->
+        return boxes.map { rf ->
+            val b = rf.box
             val box = Box(
                 (b.x1 / k).coerceIn(0.0, w.toDouble()),
                 (b.y1 / k).coerceIn(0.0, h.toDouble()),
                 (b.x2 / k).coerceIn(0.0, w.toDouble()),
                 (b.y2 / k).coerceIn(0.0, h.toDouble())
             )
-            FaceInfo(box, HeadTop.estimate(pixels, w, h, box.toArray()))
+            // 1) kişi maskesinden ölçülen saç tepesi (en güvenilir); 2) renk/arka plan analizi; 3) yüz oranı
+            val fromMask = if (mask != null) maskHeadTop(mask, b) / k else Double.NaN
+            if (!fromMask.isNaN()) {
+                FaceInfo(box, fromMask, true, rf.roll, rf.yaw)
+            } else {
+                FaceInfo(box, HeadTop.estimate(pixels, w, h, box.toArray()), false, rf.roll, rf.yaw)
+            }
         }.filter { it.box.width >= 8 && it.box.height >= 8 }
             .sortedByDescending { it.box.width * it.box.height }
     }
 
-    fun defaultBox(w: Int, h: Int, face: FaceInfo?, s: Settings): Box =
-        Box.of(
-            Crop.defaultCropBox(
-                w, h, face?.box?.toArray(), face?.headTop ?: Double.NaN, s.cropParams()
-            )
-        )
+    fun defaultBox(w: Int, h: Int, face: FaceInfo?, s: Settings): Box {
+        val p = s.cropParams()
+        if (face != null && face.trusted) p.hairMin = 0.01   // ölçülen saç tepesi olduğu gibi kullanılır
+        return Box.of(Crop.defaultCropBox(w, h, face?.box?.toArray(), face?.headTop ?: Double.NaN, p))
+    }
 
     fun thumb(pixels: IntArray, w: Int, h: Int, box: Box): Bitmap {
         val px = Lanczos.cropResize(pixels, w, h, box.x1, box.y1, box.x2, box.y2, THUMB_W, THUMB_H)
         return Bitmap.createBitmap(px, THUMB_W, THUMB_H, Bitmap.Config.ARGB_8888)
     }
+
+    fun quality(pixels: IntArray, w: Int, h: Int, box: Box): Quality.Report =
+        Quality.analyze(pixels, w, h, box.toArray())
 
     fun finalPixels(pixels: IntArray, w: Int, h: Int, box: Box): IntArray =
         Lanczos.cropResize(pixels, w, h, box.x1, box.y1, box.x2, box.y2, TARGET_W, TARGET_H)

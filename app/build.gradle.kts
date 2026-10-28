@@ -59,4 +59,6 @@ dependencies {
     implementation("androidx.camera:camera-view:$camerax")
     // Yüz algılama: model uygulamanın içinde gelir, internet / Play Hizmetleri indirmesi gerekmez.
     implementation("com.google.mlkit:face-detection:16.1.7")
+    // Kişi maskesi: saç tepesini doğru ölçmek için (model uygulamanın içinde gelir).
+    implementation("com.google.mlkit:segmentation-selfie:16.0.0-beta6")
 }

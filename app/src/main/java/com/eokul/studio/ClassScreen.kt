@@ -1,5 +1,6 @@
 package com.eokul.studio
 
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
@@ -67,6 +68,8 @@ fun ClassScreen(studio: StudioViewModel, classId: String) {
     var deleteFor by remember { mutableStateOf<Student?>(null) }
     var clearFor by remember { mutableStateOf<Student?>(null) }
     var addOpen by remember { mutableStateOf(false) }
+    var toolsOpen by remember { mutableStateOf(false) }
+    val ctx = LocalContext.current
 
     val q = query.trim().lowercase()
     val shown = cls.students.filter { s ->
@@ -93,6 +96,35 @@ fun ClassScreen(studio: StudioViewModel, classId: String) {
                         }
                         TextButton(onClick = { addOpen = true }) { Text("＋ Öğrenci") }
                         TextButton(onClick = { studio.navigate(Screen.Import(cls.id)) }) { Text("📋 Liste") }
+                        Box {
+                            TextButton(onClick = { toolsOpen = true }) { Text("⋮") }
+                            DropdownMenu(expanded = toolsOpen, onDismissRequest = { toolsOpen = false }) {
+                                DropdownMenuItem(text = { Text("Eksik listesini paylaş") }, onClick = {
+                                    toolsOpen = false
+                                    val missing = cls.students.filter { !it.captured }
+                                    if (missing.isEmpty()) {
+                                        studio.toast("Eksik öğrenci yok")
+                                    } else {
+                                        val body = cls.name + " — fotoğrafı eksik öğrenciler (" + missing.size + ")\n" +
+                                            missing.joinToString("\n") { it.no + "  " + it.name }
+                                        val send = Intent(Intent.ACTION_SEND).setType("text/plain")
+                                            .putExtra(Intent.EXTRA_TEXT, body)
+                                        ctx.startActivity(Intent.createChooser(send, "Eksik listesi"))
+                                    }
+                                })
+                                DropdownMenuItem(text = { Text("e-Okul ZIP oluştur (numara adlı)") }, onClick = {
+                                    toolsOpen = false
+                                    studio.exportEokulZip(cls.id)
+                                })
+                                val stale = studio.staleNameCount(cls.id)
+                                if (stale > 0) {
+                                    DropdownMenuItem(text = { Text("Dosya adlarını güncelle ($stale)") }, onClick = {
+                                        toolsOpen = false
+                                        studio.syncFileNames(cls.id)
+                                    })
+                                }
+                            }
+                        }
                     }
                     val total = cls.students.size
                     LinearProgressIndicator(
@@ -230,7 +262,7 @@ fun ClassScreen(studio: StudioViewModel, classId: String) {
         AlertDialog(
             onDismissRequest = { clearFor = null },
             title = { Text("Fotoğraf silinsin mi?") },
-            text = { Text("${clr.no} · ${clr.name}\nSınıf klasöründeki, Orijinaller’deki ve E-Okul’daki dosyalar silinir.") },
+            text = { Text("${clr.no} · ${clr.name}\nSınıf klasöründeki ve Orijinaller’deki dosyalar silinir.") },
             confirmButton = {
                 TextButton(onClick = {
                     studio.clearPhoto(cls.id, clr.no)
