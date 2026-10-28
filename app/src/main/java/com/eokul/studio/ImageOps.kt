@@ -10,6 +10,7 @@ import android.graphics.Matrix
 import android.net.Uri
 import androidx.exifinterface.media.ExifInterface
 import com.eokul.studio.core.Crop
+import com.eokul.studio.core.Finish
 import com.eokul.studio.core.HeadTop
 import com.eokul.studio.core.JpegEncoder
 import com.eokul.studio.core.Lanczos
@@ -268,7 +269,7 @@ object ImageOps {
         Quality.analyze(pixels, w, h, box.toArray())
 
     fun finalPixels(pixels: IntArray, w: Int, h: Int, box: Box): IntArray =
-        Lanczos.cropResize(pixels, w, h, box.x1, box.y1, box.x2, box.y2, TARGET_W, TARGET_H)
+        Finish.render(pixels, w, h, box.toArray(), TARGET_W, TARGET_H, Finish.Opts())
 
     /** 133x171 JPEG: 4:4:4, 300 DPI, isteğe bağlı sRGB profili, en az [Settings.minKb] KB. */
     fun encode(ctx: Context, px: IntArray, s: Settings): ByteArray {

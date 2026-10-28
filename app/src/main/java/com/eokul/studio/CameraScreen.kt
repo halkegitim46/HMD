@@ -156,7 +156,22 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
         }
     }
     val imageCapture = remember {
-        ImageCapture.Builder().setResolutionSelector(selector).build()
+        // Standart kalite: ~2 MP (1600x1200). 133x171 çıktı için fazlasıyla yeterli; dosya küçük, gürültü az.
+        ImageCapture.Builder()
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+            .setJpegQuality(90)
+            .setResolutionSelector(
+                ResolutionSelector.Builder()
+                    .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
+                    .setResolutionStrategy(
+                        androidx.camera.core.resolutionselector.ResolutionStrategy(
+                            android.util.Size(1600, 1200),
+                            androidx.camera.core.resolutionselector.ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
+                        )
+                    )
+                    .build()
+            )
+            .build()
     }
     val analysis = remember {
         ImageAnalysis.Builder()

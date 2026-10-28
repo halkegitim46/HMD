@@ -120,6 +120,10 @@ public class RosterTest {
         check("1500 satır süre < 500ms", ms < 500, true);
         System.out.println("  1500 satır ayrıştırma: " + ms + " ms");
 
+        // 18) e-Okul alt toplam satırı öğrenci sayılmamalı
+        r = p("S.No\tÖğrenci No\tAdı\tSoyadı\tCinsiyeti\n1\t111\tHATİCE\tDENEME\tKız\nKız Öğrenci Sayısı :\tErkek Öğrenci Sayısı :\tToplam Öğrenci Sayısı :\t29\n");
+        check("alt toplam", dump(r), "111=HATİCE DENEME | ");
+
         System.out.println(fails == 0 ? "ROSTER_OK (" + total + " kontrol)" : "BAŞARISIZ: " + fails + "/" + total);
         if (fails > 0) System.exit(1);
     }

@@ -181,13 +181,19 @@ public final class RosterParser {
         return noGender.size() >= 2 ? noGender : words;
     }
 
+    /** e-Okul listesi alt satırı: "Kız Öğrenci Sayısı : … Toplam Öğrenci Sayısı : 29". */
+    private static boolean isSummaryLine(String l) {
+        String u = l.toLowerCase(TR);
+        return u.contains("sayısı") || u.contains("sayisi") || u.trim().startsWith("toplam");
+    }
+
     public static Result parse(String text, Delimiter requested, boolean surnameFirst, CaseMode caseMode) {
         List<String> lines = new ArrayList<>();
         List<Integer> lineNos = new ArrayList<>();
         String[] raw = (text == null ? "" : text).split("\\r?\\n|\\r");
         for (int i = 0; i < raw.length; i++) {
             String l = raw[i].replace(' ', ' ').replace("﻿", "");
-            if (!l.trim().isEmpty()) {
+            if (!l.trim().isEmpty() && !isSummaryLine(l)) {
                 lines.add(l);
                 lineNos.add(i + 1);
             }

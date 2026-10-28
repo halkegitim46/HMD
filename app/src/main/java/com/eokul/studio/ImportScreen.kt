@@ -68,8 +68,14 @@ fun ImportScreen(studio: StudioViewModel, classId: String?) {
                 if (bytes == null || bytes.isEmpty()) {
                     error = "Dosya boş"
                 } else {
-                    text = decodeText(bytes)
-                    error = null
+                    if (com.eokul.studio.core.SheetReader.looksLikeExcel(bytes)) {
+                        text = com.eokul.studio.core.SheetReader.readText(bytes)
+                        if (text.isBlank()) error = "Excel sayfasında liste bulunamadı"
+                        else error = null
+                    } else {
+                        text = decodeText(bytes)
+                        error = null
+                    }
                 }
             } catch (e: Exception) {
                 error = "Dosya okunamadı"
@@ -120,8 +126,14 @@ fun ImportScreen(studio: StudioViewModel, classId: String?) {
                         error = null
                     }
                 }) { Text("📋 Panodan yapıştır") }
-                OutlinedButton(onClick = { filePicker.launch(arrayOf("text/*", "application/vnd.ms-excel", "application/octet-stream")) }) {
-                    Text("📄 Dosyadan al")
+                OutlinedButton(onClick = { filePicker.launch(
+                    arrayOf(
+                        "text/*", "application/vnd.ms-excel",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        "application/octet-stream"
+                    )
+                ) }) {
+                    Text("📄 Excel / CSV")
                 }
                 if (text.isNotEmpty()) OutlinedButton(onClick = { text = "" }) { Text("Temizle") }
             }
