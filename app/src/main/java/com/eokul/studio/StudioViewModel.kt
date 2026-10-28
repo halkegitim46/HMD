@@ -71,7 +71,6 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
         SettingsState.init(ctx)
         classes.addAll(store.load())
         refreshRootName()
-        locked = settings.pinHash != null
     }
 
     fun updateSettings(s: Settings) {
@@ -79,7 +78,7 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ------------------------------------------------------------------ PIN kilidi
-    var locked by mutableStateOf(false)
+    var locked by mutableStateOf(SettingsState.current.pinHash != null)
         private set
     private var backgroundedAt = 0L
 
