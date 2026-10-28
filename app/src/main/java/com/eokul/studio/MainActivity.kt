@@ -102,6 +102,7 @@ fun AppRoot(vm: AppViewModel, studio: StudioViewModel) {
                 is Screen.Home -> HomeScreen(studio)
                 is Screen.ClassDetail -> ClassScreen(studio, sc.classId)
                 is Screen.Import -> ImportScreen(studio, sc.classId)
+                is Screen.Sheet -> SheetScreen(studio, sc.classId)
                 is Screen.Camera -> CameraScreen(studio, sc.classId, sc.no)
                 is Screen.Review -> ReviewScreen(studio)
                 is Screen.CaptureEditor -> CaptureEditorScreen(studio)

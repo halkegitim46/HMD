@@ -58,6 +58,8 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
     var outDir by remember { mutableStateOf(cur.outputDir) }
     var embed by remember { mutableStateOf(cur.embedSrgb) }
     var serial by remember { mutableStateOf(cur.serialMode) }
+    var autoTol by remember { mutableStateOf(cur.autoTol.toFloat()) }
+    var autoHold by remember { mutableStateOf(cur.autoHoldMs.toFloat()) }
     var keepOrig by remember { mutableStateOf(cur.keepOriginals) }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -80,6 +82,8 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
         if (problem != null || kb == null) return null
         return vm.settings.copy(
             serialMode = serial,
+            autoTol = (autoTol * 100.0).roundToInt() / 100.0,
+            autoHoldMs = ((autoHold / 100f).roundToInt() * 100).coerceIn(400, 4000),
             keepOriginals = keepOrig,
             topGap = (topGap * 100.0).roundToInt() / 100.0,
             headFrac = (headFrac * 100.0).roundToInt() / 100.0,
@@ -140,6 +144,28 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
         }
         Text(
             "Yedek: sınıf listeleri ve küçük fotoğraflar kayıt klasörüne Yedek-tarih.zip olarak yazılır.",
+            style = MaterialTheme.typography.bodySmall, color = Color.Gray
+        )
+
+        Spacer(Modifier.size(14.dp))
+        Text("🎯  Otomatik çekim", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.size(4.dp))
+        val tolText = when {
+            autoTol < 0.85f -> "sıkı"
+            autoTol > 1.2f -> "gevşek"
+            else -> "normal"
+        }
+        Text("Yüz konumu toleransı: $tolText (${(autoTol * 100).roundToInt()}%)", style = MaterialTheme.typography.bodyMedium)
+        Slider(value = autoTol, onValueChange = { autoTol = it }, valueRange = 0.6f..1.6f)
+        Text(
+            "Sıkı: yüzün kılavuza çok iyi oturması gerekir. Gevşek: biraz sapmada bile çeker. Öğrenciler çok kıpır kıpırsa gevşetin.",
+            style = MaterialTheme.typography.bodySmall, color = Color.Gray
+        )
+        Spacer(Modifier.size(8.dp))
+        Text("Sabit bekleme süresi: ${"%.1f".format(autoHold / 1000f)} sn", style = MaterialTheme.typography.bodyMedium)
+        Slider(value = autoHold, onValueChange = { autoHold = it }, valueRange = 500f..3000f)
+        Text(
+            "Yüz hazır olduktan sonra çekimden önce beklenen süre (halka dolarken).",
             style = MaterialTheme.typography.bodySmall, color = Color.Gray
         )
 

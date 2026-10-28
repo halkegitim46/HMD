@@ -23,6 +23,11 @@ import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
@@ -340,7 +345,7 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
             }
             noReadySince = 0L
             if (readySince == 0L) readySince = now
-            progress = ((now - readySince) / 1200f).coerceIn(0f, 1f)
+            progress = ((now - readySince) / studio.settings.autoHoldMs.toFloat()).coerceIn(0f, 1f)
             if (progress >= 1f) {
                 armed = false
                 readySince = 0L
@@ -462,36 +467,43 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
             }
         }
 
-        // ---- Alt düğmeler
+        // ---- Alt düğmeler (simgeler)
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedButton(onClick = { galleryPicker.launch(arrayOf("image/*")) }) {
-                Text("🖼 Galeri", color = Color.White, fontSize = 12.sp)
-            }
-            OutlinedButton(
-                onClick = {
-                    torchOn = !torchOn
-                },
+            IconBtn(CamIcons.Gallery, "Galeriden seç", { galleryPicker.launch(arrayOf("image/*")) }, tint = Color.White)
+            IconBtn(
+                if (torchOn) CamIcons.FlashOn else CamIcons.FlashOff,
+                if (torchOn) "Işığı kapat" else "Işığı aç",
+                { torchOn = !torchOn },
+                tint = if (torchOn) Color(0xFFFFD54F) else Color.White,
                 enabled = hasPerm && lensBack
-            ) { Text(if (torchOn) "🔦 Açık" else "🔦 Flaş", color = Color.White, fontSize = 12.sp) }
-            Button(
-                onClick = { shoot() },
-                enabled = hasPerm && camera != null && !capturing,
-                modifier = Modifier.size(72.dp)
-            ) { Text("●", fontSize = 28.sp) }
-            OutlinedButton(
-                onClick = {
+            )
+            val shutterOk = hasPerm && camera != null && !capturing
+            Box(
+                Modifier
+                    .size(76.dp)
+                    .border(4.dp, if (shutterOk) Color.White else Color.Gray, CircleShape)
+                    .padding(7.dp)
+                    .clip(CircleShape)
+                    .background(if (shutterOk) Color.White else Color.Gray)
+                    .clickable(enabled = shutterOk) { shoot() }
+            )
+            IconBtn(
+                androidx.compose.material.icons.Icons.Filled.Refresh, "Kamerayı çevir",
+                {
                     torchOn = false
                     lensBack = !lensBack
                 },
-                enabled = hasPerm
-            ) { Text("🔄 Çevir", color = Color.White, fontSize = 12.sp) }
-            OutlinedButton(onClick = { studio.cameraMove(classId, no, 1) }, enabled = index < cls.students.size - 1) {
-                Text("Atla ›", color = Color.White, fontSize = 12.sp)
-            }
+                tint = Color.White, enabled = hasPerm
+            )
+            IconBtn(
+                CamIcons.SkipNext, "Bu öğrenciyi atla",
+                { studio.cameraMove(classId, no, 1) },
+                tint = Color.White, enabled = index < cls.students.size - 1
+            )
         }
     }
 }

@@ -99,6 +99,10 @@ fun ClassScreen(studio: StudioViewModel, classId: String) {
                         Box {
                             MoreBtn(onClick = { toolsOpen = true }, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                             DropdownMenu(expanded = toolsOpen, onDismissRequest = { toolsOpen = false }) {
+                                DropdownMenuItem(text = { Text("Kontrol sayfası (ızgara)") }, onClick = {
+                                    toolsOpen = false
+                                    studio.navigate(Screen.Sheet(cls.id))
+                                })
                                 DropdownMenuItem(text = { Text("Eksik listesini paylaş") }, onClick = {
                                     toolsOpen = false
                                     val missing = cls.students.filter { !it.captured }

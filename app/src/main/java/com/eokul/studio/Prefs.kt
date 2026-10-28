@@ -22,6 +22,10 @@ data class Settings(
     val keepOriginals: Boolean = true,
     /** Yüz kılavuza oturup sabit durunca otomatik çek. */
     val autoCapture: Boolean = false,
+    /** Otomatik çekim toleransı çarpanı: <1 sıkı, >1 gevşek. */
+    val autoTol: Double = 1.0,
+    /** Yüz hazır olduktan sonra çekime kadar bekleme (ms). */
+    val autoHoldMs: Int = 1200,
     /** PIN (SHA-256 + tuz); null ise uygulama kilitsiz. */
     val pinHash: String? = null,
     val pinSalt: String? = null
@@ -60,6 +64,8 @@ class Prefs(context: Context) {
             serialMode = sp.getBoolean("serialMode", d.serialMode),
             keepOriginals = sp.getBoolean("keepOriginals", d.keepOriginals),
             autoCapture = sp.getBoolean("autoCapture", d.autoCapture),
+            autoTol = (sp.getString("autoTol", null)?.toDoubleOrNull() ?: d.autoTol).coerceIn(0.5, 2.0),
+            autoHoldMs = sp.getInt("autoHoldMs", d.autoHoldMs).coerceIn(400, 4000),
             pinHash = sp.getString("pinHash", null)?.takeIf { it.isNotBlank() },
             pinSalt = sp.getString("pinSalt", null)?.takeIf { it.isNotBlank() }
         )
@@ -78,6 +84,8 @@ class Prefs(context: Context) {
             .putBoolean("serialMode", s.serialMode)
             .putBoolean("keepOriginals", s.keepOriginals)
             .putBoolean("autoCapture", s.autoCapture)
+            .putString("autoTol", s.autoTol.toString())
+            .putInt("autoHoldMs", s.autoHoldMs)
             .putString("pinHash", s.pinHash)
             .putString("pinSalt", s.pinSalt)
             .putInt("ver", 2)

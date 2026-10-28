@@ -40,3 +40,7 @@ günlüğünü (hata satırlarını) yapıştır, düzeltelim.
   Seri çekimde bir önceki öğrenci çerçevedeyken yanlışlıkla çekmemek için yüz çerçeveden çıkıp girince silahlanır.
 - PIN kilidi (Ayarlar → PIN): açılışta ve 30 sn'den uzun arka planda kalınca sorulur.
 - Listeyi CSV/TXT dosyadan alma (UTF-8 ve Windows-1254 desteklenir).
+
+## Kontrol sayfası ve otomatik çekim ayarı
+- Sınıf menüsü (⋮) → "Kontrol sayfası": tüm küçük fotoğraflar ızgarada; dokununca büyür, yeniden çek / kırpmayı düzenle. Eksikler kırmızı çerçeveli.
+- Ayarlar → "Otomatik çekim": konum toleransı (sıkı ↔ gevşek) ve sabit bekleme süresi.

@@ -32,21 +32,22 @@ fun guideFor(w: Float, h: Float, s: Settings): Guide {
 
 class LiveEval(val ready: Boolean, val hint: String)
 
-/** Yüzün kılavuza uyup uymadığını değerlendirir (otomatik çekim ve yönlendirme için). */
+/** Yüzün kılavuza uyup uymadığını değerlendirir (otomatik çekim ve yönlendirme için). Tolerans: [Settings.autoTol]. */
 fun evaluateLive(l: LiveFace, s: Settings): LiveEval {
+    val t = s.autoTol.toFloat()
     val g = guideFor(1f, PREVIEW_H, s)
     val headH = g.chinY - g.hairY
     val faceBottom = l.y2 * PREVIEW_H
     val faceH = l.h * PREVIEW_H
     val ratio = faceH / headH
     return when {
-        Math.abs(l.cx - 0.5f) > 0.10f -> LiveEval(false, if (l.cx < 0.5f) "Sağa kayın" else "Sola kayın")
-        ratio < 0.58f -> LiveEval(false, "Biraz yaklaşın")
-        ratio > 0.98f -> LiveEval(false, "Biraz uzaklaşın")
-        faceBottom < g.chinY - headH * 0.14f -> LiveEval(false, "Yüz çok yukarıda")
-        faceBottom > g.chinY + headH * 0.14f -> LiveEval(false, "Yüz çok aşağıda")
-        Math.abs(l.roll) > 10f -> LiveEval(false, "Başı dik tutun")
-        Math.abs(l.yaw) > 15f -> LiveEval(false, "Karşıya bakın")
+        Math.abs(l.cx - 0.5f) > 0.10f * t -> LiveEval(false, if (l.cx < 0.5f) "Sağa kayın" else "Sola kayın")
+        ratio < 0.78f - 0.20f * t -> LiveEval(false, "Biraz yaklaşın")
+        ratio > 0.78f + 0.20f * t -> LiveEval(false, "Biraz uzaklaşın")
+        faceBottom < g.chinY - headH * 0.14f * t -> LiveEval(false, "Yüz çok yukarıda")
+        faceBottom > g.chinY + headH * 0.14f * t -> LiveEval(false, "Yüz çok aşağıda")
+        Math.abs(l.roll) > 10f * t -> LiveEval(false, "Başı dik tutun")
+        Math.abs(l.yaw) > 15f * t -> LiveEval(false, "Karşıya bakın")
         else -> LiveEval(true, "Hazır — sabit durun")
     }
 }

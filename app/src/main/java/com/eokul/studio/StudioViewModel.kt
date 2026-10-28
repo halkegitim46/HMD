@@ -27,6 +27,7 @@ sealed interface Screen {
     data object Home : Screen
     data class ClassDetail(val classId: String) : Screen
     data class Import(val classId: String?) : Screen
+    data class Sheet(val classId: String) : Screen
     data class Camera(val classId: String, val no: String) : Screen
     data object Review : Screen
     data object CaptureEditor : Screen
