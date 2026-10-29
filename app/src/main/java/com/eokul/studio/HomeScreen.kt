@@ -62,7 +62,20 @@ fun HomeScreen(studio: StudioViewModel) {
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.weight(1f)
                     )
-                    TextButton(onClick = { studio.navigate(Screen.Batch) }) { Text("✂ Toplu kırpma") }
+                    var toolsMenu by remember { mutableStateOf(false) }
+                    Box {
+                        MoreBtn(onClick = { toolsMenu = true }, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                        DropdownMenu(expanded = toolsMenu, onDismissRequest = { toolsMenu = false }) {
+                            DropdownMenuItem(text = { Text("📦 Tüm sınıflar tek ZIP (e-Okul)") }, enabled = studio.classes.isNotEmpty(), onClick = {
+                                toolsMenu = false
+                                studio.exportAllEokulZip()
+                            })
+                            DropdownMenuItem(text = { Text("✂ Toplu kırpma (hazır fotoğraflar)") }, onClick = {
+                                toolsMenu = false
+                                studio.navigate(Screen.Batch)
+                            })
+                        }
+                    }
                     SettingsBtn(onClick = { studio.navigate(Screen.Settings) }, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
             }
@@ -97,7 +110,7 @@ fun HomeScreen(studio: StudioViewModel) {
                     Spacer(Modifier.size(6.dp))
                     Text(
                         "Sınıf ekleyin, ardından e-Okul veya Excel’den kopyaladığınız numara + ad soyad listesini yapıştırın.",
-                        style = MaterialTheme.typography.bodyMedium, color = Color.Gray
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.size(12.dp))
                     Button(onClick = { newClassOpen = true }) { Text("＋ İlk sınıfı ekle") }
@@ -227,7 +240,7 @@ private fun ClassCard(c: SchoolClass, onOpen: () -> Unit, onRename: () -> Unit, 
                     c.capturedCount == total -> "✅ Tamamlandı"
                     else -> "${total - c.capturedCount} öğrenci bekliyor"
                 },
-                style = MaterialTheme.typography.bodySmall, color = Color.Gray
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

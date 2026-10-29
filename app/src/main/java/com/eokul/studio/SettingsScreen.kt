@@ -115,7 +115,7 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
         OutlinedButton(onClick = { rootPicker.launch(null) }) { Text("Klasör seç / değiştir") }
         Text(
             "Yapı: Sınıf/12345-Ad Soyad.jpg · Sınıf/Orijinaller/12345-Ad Soyad.jpg",
-            style = MaterialTheme.typography.bodySmall, color = Color.Gray
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.size(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -133,7 +133,7 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
         }
         Text(
             "PIN açıkken uygulama başlarken ve 30 sn’den uzun arka planda kalınca PIN sorulur.",
-            style = MaterialTheme.typography.bodySmall, color = Color.Gray
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.size(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -144,7 +144,7 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
         }
         Text(
             "Yedek: sınıf listeleri ve küçük fotoğraflar kayıt klasörüne Yedek-tarih.zip olarak yazılır.",
-            style = MaterialTheme.typography.bodySmall, color = Color.Gray
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(Modifier.size(14.dp))
@@ -159,14 +159,14 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
         Slider(value = autoTol, onValueChange = { autoTol = it }, valueRange = 0.6f..1.6f)
         Text(
             "Sıkı: yüzün kılavuza çok iyi oturması gerekir. Gevşek: biraz sapmada bile çeker. Öğrenciler çok kıpır kıpırsa gevşetin.",
-            style = MaterialTheme.typography.bodySmall, color = Color.Gray
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.size(8.dp))
         Text("Sabit bekleme süresi: ${"%.1f".format(autoHold / 1000f)} sn", style = MaterialTheme.typography.bodyMedium)
         Slider(value = autoHold, onValueChange = { autoHold = it }, valueRange = 500f..3000f)
         Text(
             "Yüz hazır olduktan sonra çekimden önce beklenen süre (halka dolarken).",
-            style = MaterialTheme.typography.bodySmall, color = Color.Gray
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(Modifier.size(20.dp))
@@ -179,7 +179,7 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
         Text(
             "Saçın tepesi ile fotoğrafın üst kenarı arasındaki sabit boşluk (kırpma yüksekliğinin oranı). " +
                 "Tüm öğrencilerde aynı oranda uygulanır.",
-            style = MaterialTheme.typography.bodySmall, color = Color.Gray
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.size(12.dp))
         Text("Baş boyutu: %${(headFrac * 100).roundToInt()}", style = MaterialTheme.typography.bodyMedium)
@@ -187,7 +187,7 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
         Text(
             "Saç tepesi ile çene arasındaki mesafenin kırpmaya oranı. Yüz çok büyük çıkıyorsa azaltın, " +
                 "küçük kalıyorsa artırın.",
-            style = MaterialTheme.typography.bodySmall, color = Color.Gray
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.size(6.dp))
         OutlinedButton(onClick = {
@@ -204,7 +204,7 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
         Slider(value = quality, onValueChange = { quality = it }, valueRange = 70f..100f, steps = 29)
         Text(
             "100 önerilir: renk kanalları tam çözünürlükte (4:4:4) saklanır, 300 DPI yazılır.",
-            style = MaterialTheme.typography.bodySmall, color = Color.Gray
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.size(10.dp))
         OutlinedTextField(
@@ -266,7 +266,7 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
         Spacer(Modifier.size(6.dp))
         Text(
             "“Yeniden kırp” yalnızca elle düzenlemediğiniz fotoğrafları günceller; düzenledikleriniz korunur.",
-            style = MaterialTheme.typography.bodySmall, color = Color.Gray
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.size(24.dp))
     }

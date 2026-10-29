@@ -115,7 +115,7 @@ fun ImportScreen(studio: StudioViewModel, classId: String?) {
             Text(
                 "Excel veya e-Okul’dan numara ve ad soyad sütunlarını kopyalayıp yapıştırın. " +
                     "Her satır bir öğrenci olmalı.",
-                style = MaterialTheme.typography.bodySmall, color = Color.Gray
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.size(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -146,7 +146,7 @@ fun ImportScreen(studio: StudioViewModel, classId: String?) {
             Text("Ayraç", style = MaterialTheme.typography.labelLarge)
             ChipRow(Delimiter.values().toList(), delim, { delimLabel(it) }) { delim = it }
             if (result != null && delim == Delimiter.AUTO) {
-                Text("Algılanan: ${delimLabel(result.detected)}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Text("Algılanan: ${delimLabel(result.detected)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             Spacer(Modifier.size(8.dp))
@@ -188,7 +188,7 @@ fun ImportScreen(studio: StudioViewModel, classId: String?) {
                     fontWeight = FontWeight.Bold
                 )
                 if (result.skippedHeaders > 0) {
-                    Text("Başlık satırı atlandı", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text("Başlık satırı atlandı", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Spacer(Modifier.size(4.dp))
                 val shownRows = result.rows.take(150)
@@ -207,7 +207,7 @@ fun ImportScreen(studio: StudioViewModel, classId: String?) {
                     }
                 }
                 if (result.rows.size > shownRows.size) {
-                    Text("… ve ${result.rows.size - shownRows.size} satır daha", color = Color.Gray)
+                    Text("… ve ${result.rows.size - shownRows.size} satır daha", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             error?.let {

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -119,7 +120,7 @@ fun ReviewScreen(studio: StudioViewModel) {
                 if (Math.abs(f0.yaw) > 15f) warnings.add("⚠ Yüz kameraya dönük değil (${Math.abs(f0.yaw).toInt()}°) — karşıdan çekin.")
             }
             androidx.compose.runtime.LaunchedEffect(warnings.size) { cap.warned = warnings.isNotEmpty() }
-            for (w in warnings) Text(w, color = Warn, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+            for (w in warnings) Text(w, color = Warn, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
             val kb = (preview?.second ?: 0) / 1024.0
             Text(
                 "Çıktı: ${TARGET_W}×${TARGET_H} px · ${"%.1f".format(kb)} KB · kaynak ${s.iw}×${s.ih}",
@@ -131,17 +132,17 @@ fun ReviewScreen(studio: StudioViewModel) {
         val pad = PaddingValues(horizontal = 4.dp)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(
-                onClick = { studio.discardCapture() }, modifier = Modifier.weight(1f),
+                onClick = { studio.discardCapture() }, modifier = Modifier.weight(1f).heightIn(min = 52.dp),
                 enabled = !cap.saving, contentPadding = pad
-            ) { Text(if (cap.fromSaved) "İptal" else "↺ Yeniden çek", fontSize = 12.sp) }
+            ) { Text(if (cap.fromSaved) "İptal" else "↺ Yeniden çek", fontSize = 14.sp) }
             OutlinedButton(
-                onClick = { studio.openCaptureEditor() }, modifier = Modifier.weight(1f),
+                onClick = { studio.openCaptureEditor() }, modifier = Modifier.weight(1f).heightIn(min = 52.dp),
                 enabled = s != null && !cap.loading && !cap.saving, contentPadding = pad
-            ) { Text("✂ Düzenle", fontSize = 12.sp) }
+            ) { Text("✂ Düzenle", fontSize = 14.sp) }
             Button(
-                onClick = { studio.saveCapture() }, modifier = Modifier.weight(1.4f),
+                onClick = { studio.saveCapture() }, modifier = Modifier.weight(1.4f).heightIn(min = 52.dp),
                 enabled = s != null && !cap.loading && !cap.saving, contentPadding = pad
-            ) { Text(if (cap.saving) "Kaydediliyor…" else "✅ Kaydet", fontSize = 13.sp) }
+            ) { Text(if (cap.saving) "Kaydediliyor…" else "✅ Kaydet", fontSize = 15.sp) }
         }
     }
 }

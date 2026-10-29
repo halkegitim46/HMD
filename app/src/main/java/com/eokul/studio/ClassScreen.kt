@@ -334,7 +334,7 @@ private fun StudentRow(
             Text(
                 s.no + if (s.retake) "  ·  🔁 tekrar çekilmeli" else if (s.captured) "  ·  ✅ çekildi" else "  ·  bekliyor",
                 style = MaterialTheme.typography.bodySmall,
-                color = if (s.retake) Color(0xFFE08A00) else if (s.captured) Color(0xFF3C9A5F) else Color.Gray
+                color = if (s.retake) Color(0xFFE08A00) else if (s.captured) Color(0xFF3C9A5F) else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Box {

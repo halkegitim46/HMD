@@ -68,7 +68,7 @@ fun LockScreen(studio: StudioViewModel) {
         Text("🔒", style = MaterialTheme.typography.displayMedium)
         Spacer(Modifier.size(8.dp))
         Text("E-Okul Foto Studio", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text("Öğrenci verileri PIN ile korunuyor", color = Color.Gray)
+        Text("Öğrenci verileri PIN ile korunuyor", color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.size(20.dp))
         OutlinedTextField(
             value = pin,
@@ -82,7 +82,7 @@ fun LockScreen(studio: StudioViewModel) {
             modifier = Modifier.fillMaxWidth()
         )
         error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 4.dp)) }
-        if (waitSec > 0) Text("$waitSec sn bekleyin", color = Color.Gray, modifier = Modifier.padding(top = 4.dp))
+        if (waitSec > 0) Text("$waitSec sn bekleyin", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
         Spacer(Modifier.size(12.dp))
         Button(onClick = { tryUnlock() }, enabled = pin.length >= 4 && waitSec == 0, modifier = Modifier.fillMaxWidth()) {
             Text("Kilidi aç")
@@ -90,7 +90,7 @@ fun LockScreen(studio: StudioViewModel) {
         Spacer(Modifier.size(16.dp))
         Text(
             "PIN’i unuttuysanız uygulama verilerini temizlemek gerekir (yedeğiniz kayıt klasöründe durur).",
-            style = MaterialTheme.typography.bodySmall, color = Color.Gray
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -126,7 +126,7 @@ fun PinDialog(studio: StudioViewModel, hasPin: Boolean, onDismiss: () -> Unit) {
                 field(pin2, "PIN tekrar") { pin2 = it }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                 if (hasPin) Text("PIN’i kaldırmak için yeni PIN alanlarını boş bırakıp “Kaldır”a basın.",
-                    style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         confirmButton = {

@@ -130,8 +130,8 @@ fun SheetScreen(studio: StudioViewModel, classId: String) {
                             Text(if (s.captured) "…" else "📷", fontSize = 22.sp)
                         }
                     }
-                    Text(s.no, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                    Text(s.name, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.Gray)
+                    Text(s.no, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text(s.name, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

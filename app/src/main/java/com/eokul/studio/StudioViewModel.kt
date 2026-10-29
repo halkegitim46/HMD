@@ -507,6 +507,54 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Tüm sınıfların fotoğraflarını tek ZIP'te toplar (numara.jpg, düz yapı): e-Okul toplu yükleme için. */
+    fun exportAllEokulZip() {
+        val rootStr = settings.rootUri
+        if (rootStr == null) {
+            say("Önce kayıt klasörünü seçin")
+            return
+        }
+        val root = Uri.parse(rootStr)
+        val snap = classes.toList()
+        viewModelScope.launch {
+            try {
+                val res = withContext(Dispatchers.IO) {
+                    val bos = java.io.ByteArrayOutputStream()
+                    val seen = HashSet<String>()
+                    var count = 0
+                    var dup = 0
+                    java.util.zip.ZipOutputStream(bos).use { zip ->
+                        for (cls in snap) for (st in cls.students) {
+                            if (!st.captured) continue
+                            val f = Naming.privatePhoto(ctx, cls.id, st.no)
+                            if (!f.exists()) continue
+                            if (!seen.add(st.no)) {
+                                dup++
+                                continue
+                            }
+                            zip.putNextEntry(java.util.zip.ZipEntry("${st.no}.jpg"))
+                            zip.write(f.readBytes())
+                            zip.closeEntry()
+                            count++
+                        }
+                    }
+                    if (count > 0) Output.writePath(ctx, root, emptyList(), "Tum-siniflar-eokul.zip", "application/zip", bos.toByteArray())
+                    count to dup
+                }
+                val (n, dup) = res
+                say(
+                    if (n == 0) "Dışa aktarılacak fotoğraf yok"
+                    else "✓ ${snap.size} sınıftan $n fotoğraf → Tum-siniflar-eokul.zip" +
+                        if (dup > 0) " ($dup tekrarlı numara atlandı)" else ""
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                say("ZIP oluşturulamadı: ${e.message ?: e.javaClass.simpleName}")
+            }
+        }
+    }
+
     /** Sınıf listesi + küçük fotoğraflar: kayıt klasörüne Yedek-tarih.zip. */
     fun backup() {
         val rootStr = settings.rootUri
