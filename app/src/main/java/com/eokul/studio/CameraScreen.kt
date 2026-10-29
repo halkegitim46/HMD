@@ -205,8 +205,10 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
                     camera = provider.bindToLifecycle(activity, cs, preview, imageCapture, analysis)
                     val mirror = !lensBack
                     analysis.setAnalyzer(analysisExecutor) { proxy ->
+                        var bmpRef: android.graphics.Bitmap? = null
                         try {
                             val bmp = proxy.toBitmap()
+                            bmpRef = bmp
                             val rot = proxy.imageInfo.rotationDegrees
                             val uw = (if (rot % 180 == 0) bmp.width else bmp.height).toFloat()
                             val uh = (if (rot % 180 == 0) bmp.height else bmp.width).toFloat()
@@ -230,8 +232,13 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
                                         )
                                     }
                                 }
-                                .addOnCompleteListener { proxy.close() }
+                                .addOnCompleteListener {
+                                    // ML Kit işi bitince (başarı, hata veya iptal) bitmap ve kare serbest bırakılır.
+                                    try { bmpRef?.recycle() } catch (_: Exception) { }
+                                    proxy.close()
+                                }
                         } catch (e: Exception) {
+                            try { bmpRef?.recycle() } catch (_: Exception) { }
                             proxy.close()
                         }
                     }

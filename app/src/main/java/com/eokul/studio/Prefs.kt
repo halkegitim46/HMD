@@ -28,7 +28,9 @@ data class Settings(
     val autoHoldMs: Int = 1200,
     /** PIN (SHA-256 + tuz); null ise uygulama kilitsiz. */
     val pinHash: String? = null,
-    val pinSalt: String? = null
+    val pinSalt: String? = null,
+    /** Son başarılı yedeğin zamanı (ms); 0 = hiç alınmadı. */
+    val lastBackupMs: Long = 0L
 ) {
     fun cropParams(): Crop.Params {
         val p = Crop.Params()
@@ -67,7 +69,8 @@ class Prefs(context: Context) {
             autoTol = (sp.getString("autoTol", null)?.toDoubleOrNull() ?: d.autoTol).coerceIn(0.5, 2.0),
             autoHoldMs = sp.getInt("autoHoldMs", d.autoHoldMs).coerceIn(400, 4000),
             pinHash = sp.getString("pinHash", null)?.takeIf { it.isNotBlank() },
-            pinSalt = sp.getString("pinSalt", null)?.takeIf { it.isNotBlank() }
+            pinSalt = sp.getString("pinSalt", null)?.takeIf { it.isNotBlank() },
+            lastBackupMs = sp.getLong("lastBackupMs", 0L)
         )
     }
 
@@ -88,6 +91,7 @@ class Prefs(context: Context) {
             .putInt("autoHoldMs", s.autoHoldMs)
             .putString("pinHash", s.pinHash)
             .putString("pinSalt", s.pinSalt)
+            .putLong("lastBackupMs", s.lastBackupMs)
             .putInt("ver", 2)
             .apply()
     }

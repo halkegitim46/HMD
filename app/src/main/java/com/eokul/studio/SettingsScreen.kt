@@ -40,6 +40,7 @@ import kotlin.math.roundToInt
 fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolean, onClose: () -> Unit) {
     BackHandler { onClose() }
     var confirmRestore by remember { mutableStateOf<Uri?>(null) }
+    var advanced by remember { mutableStateOf(false) }
     var pinOpen by remember { mutableStateOf(false) }
     val restorePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) confirmRestore = uri
@@ -105,7 +106,7 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
         Spacer(Modifier.size(8.dp))
 
         // ---------------- Kayıt (sınıf akışı)
-        Text("📂  Sınıf kayıtları", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text("📂  Genel", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.size(6.dp))
         Text(
             "Kayıt klasörü: ${studio.rootName ?: "seçilmedi"}",
@@ -127,28 +128,8 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             Text("  Tam çözünürlüklü orijinali sakla", style = MaterialTheme.typography.bodyMedium)
         }
 
-        Spacer(Modifier.size(12.dp))
-        OutlinedButton(onClick = { pinOpen = true }) {
-            Text(if (vm.settings.pinHash != null) "🔒 PIN: açık (değiştir / kaldır)" else "🔓 PIN kilidi belirle")
-        }
-        Text(
-            "PIN açıkken uygulama başlarken ve 30 sn’den uzun arka planda kalınca PIN sorulur.",
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.size(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { studio.backup() }) { Text("💾 Yedekle") }
-            OutlinedButton(onClick = { restorePicker.launch(arrayOf("application/zip", "application/octet-stream")) }) {
-                Text("♻ Geri yükle")
-            }
-        }
-        Text(
-            "Yedek: sınıf listeleri ve küçük fotoğraflar kayıt klasörüne Yedek-tarih.zip olarak yazılır.",
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
         Spacer(Modifier.size(14.dp))
-        Text("🎯  Otomatik çekim", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text("📷  Çekim: otomatik çekim", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.size(4.dp))
         val tolText = when {
             autoTol < 0.85f -> "sıkı"
@@ -172,7 +153,7 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
         Spacer(Modifier.size(20.dp))
 
         // ---------------- Kırpma
-        Text("✂  Kırpma", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text("✂  Fotoğraf: kırpma", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.size(6.dp))
         Text("Saç üstü boşluk: %${(topGap * 100).roundToInt()}", style = MaterialTheme.typography.bodyMedium)
         Slider(value = topGap, onValueChange = { topGap = it }, valueRange = 0.01f..0.10f, steps = 8)
@@ -198,18 +179,22 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
         Spacer(Modifier.size(20.dp))
 
         // ---------------- Çıktı
-        Text("💾  Çıktı", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text("💾  Fotoğraf: çıktı ve dışa aktarma", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.size(6.dp))
         Text("JPEG kalitesi: ${quality.roundToInt()}", style = MaterialTheme.typography.bodyMedium)
         Slider(value = quality, onValueChange = { quality = it }, valueRange = 70f..100f, steps = 29)
         Text(
-            "100 önerilir: renk kanalları tam çözünürlükte (4:4:4) saklanır, 300 DPI yazılır.",
+            "JPEG kalitesi sıkıştırma düzeyidir (100 = en az kayıp, dosya biraz büyür). Renk alt örneklemesi (4:4:4) bundan bağımsızdır: uygulamada her zaman tam çözünürlükte yazılır. 300 DPI de her zaman yazılır.",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        Spacer(Modifier.size(8.dp))
+        TextButton(onClick = { advanced = !advanced }) { Text(if (advanced) "▾ Gelişmiş çıktı ayarlarını gizle" else "▸ Gelişmiş çıktı ayarları (boyut, klasör adı, dosya adı kuralı)") }
+        if (advanced) {
         Spacer(Modifier.size(10.dp))
         OutlinedTextField(
             value = minKb, onValueChange = { minKb = it },
             label = { Text("Minimum dosya boyutu (KB)") }, singleLine = true,
+            supportingText = { Text("Küçük dosyaları reddeden sistemler için: dosya bu boyuta kadar JPEG yorum bölümüyle doldurulur (görüntü ayrıntısı artmaz). Gerekmiyorsa 1 yapın.") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
@@ -226,6 +211,7 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             supportingText = { Text("Örn: ^\\d{5,11}$  (5–11 haneli sayı) — kaydetmeden önce denetlenir") },
             modifier = Modifier.fillMaxWidth()
         )
+        }
         Spacer(Modifier.size(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(checked = embed, onCheckedChange = { embed = it })
@@ -234,6 +220,29 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
                 style = MaterialTheme.typography.bodyMedium
             )
         }
+
+        Spacer(Modifier.size(20.dp))
+        Text("🔒  Güvenlik ve yedek", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.size(6.dp))
+        OutlinedButton(onClick = { pinOpen = true }) {
+            Text(if (vm.settings.pinHash != null) "🔒 PIN: açık (değiştir / kaldır)" else "🔓 PIN kilidi belirle")
+        }
+        Text(
+            "PIN açıkken uygulama başlarken ve 30 sn’den uzun arka planda kalınca PIN sorulur. Son uygulamalar ekranında içerik gizlenir ve ekran görüntüsü alınamaz.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.size(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { studio.backup() }) { Text("💾 Yedekle") }
+            OutlinedButton(onClick = { restorePicker.launch(arrayOf("application/zip", "application/octet-stream")) }) {
+                Text("♻ Geri yükle")
+            }
+        }
+        Text(
+            "Yedek: sınıf listeleri ve küçük fotoğraflar kayıt klasörüne Yedek-tarih.zip olarak yazılır ve yazıldıktan sonra doğrulanır. Tam çözünürlüklü orijinaller yedeğe girmez.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
 
         error?.let {
             Spacer(Modifier.size(10.dp))

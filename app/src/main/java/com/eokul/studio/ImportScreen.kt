@@ -79,7 +79,8 @@ fun ImportScreen(studio: StudioViewModel, classId: String?) {
                     }
                 }
             } catch (e: Throwable) {
-                error = "Dosya okunamadı: ${e.javaClass.simpleName} ${e.message ?: ""}".take(160)
+                error = ("Dosya okunamadı: ${e.message ?: e.javaClass.simpleName}. " +
+                    "Çözüm: dosyayı Excel'de açıp CSV olarak kaydedin veya hücreleri kopyalayıp \"Panodan yapıştır\" kullanın.").take(420)
             }
         }
     }

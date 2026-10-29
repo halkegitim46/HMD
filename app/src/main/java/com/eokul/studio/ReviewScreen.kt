@@ -113,9 +113,24 @@ fun ReviewScreen(studio: StudioViewModel) {
                 if (q.blurry()) warnings.add("⚠ Fotoğraf bulanık görünüyor — yeniden çekmeniz önerilir.")
                 if (q.dark()) warnings.add("⚠ Fotoğraf çok karanlık — daha aydınlık bir yerde çekin.")
                 if (q.bright()) warnings.add("⚠ Fotoğraf aşırı parlak — ışığı azaltın.")
+                if (q.flat() && !q.dark() && !q.bright()) warnings.add("⚠ Fotoğraf soluk / düşük kontrastlı — yüzü ve arka planı ayıran daha iyi ışık kullanın.")
             }
             val f0 = s.faces.firstOrNull()
             if (f0 != null) {
+                for (code in com.eokul.studio.core.Framing.check(f0.box.toArray(), f0.headTop, f0.eyes, s.box.toArray())) {
+                    warnings.add(
+                        when (code) {
+                            com.eokul.studio.core.Framing.HEAD_CUT -> "⚠ Başın üst kısmı kadraj dışında kalıyor — kırpma alanını yukarı taşıyın (✂ Düzenle)."
+                            com.eokul.studio.core.Framing.HEAD_TIGHT -> "⚠ Baş üstü boşluğu çok az — kırpma alanını biraz yukarı alın."
+                            com.eokul.studio.core.Framing.CHIN_CUT -> "⚠ Çene kadrajın alt kenarına çok yakın — kırpma alanını aşağı alın."
+                            com.eokul.studio.core.Framing.FACE_SMALL -> "⚠ Yüz kadrajda küçük kalıyor — kameraya yaklaşın veya kırpmayı daraltın."
+                            com.eokul.studio.core.Framing.FACE_LARGE -> "⚠ Yüz kadrajı fazla dolduruyor — biraz uzaklaşın veya kırpmayı genişletin."
+                            com.eokul.studio.core.Framing.OFF_CENTER -> "⚠ Yüz yatayda ortalı değil — kırpma alanını yüze doğru kaydırın."
+                            com.eokul.studio.core.Framing.EYE_LEVEL -> "⚠ Göz hizası beklenen aralığın dışında — kadrajı kontrol edin."
+                            else -> "⚠ Göz çizgisi eğik — başı dik tutturup tekrar çekin."
+                        }
+                    )
+                }
                 if (Math.abs(f0.roll) > 10f) warnings.add("⚠ Baş yana eğik (${Math.abs(f0.roll).toInt()}°) — başı dik tutturun.")
                 if (Math.abs(f0.yaw) > 15f) warnings.add("⚠ Yüz kameraya dönük değil (${Math.abs(f0.yaw).toInt()}°) — karşıdan çekin.")
             }

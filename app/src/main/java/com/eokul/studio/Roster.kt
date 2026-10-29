@@ -112,16 +112,50 @@ object Naming {
 /** Sınıf ve öğrenci verisi (JSON, atomik yazım). */
 class RosterStore(private val file: File) {
 
-    fun load(): List<SchoolClass> = try {
-        parse(file.readText())
+    private val bak: File get() = File(file.parentFile, file.name + ".bak")
+
+    /**
+     * Önce ana dosya, bozuksa son sağlam yedek (.bak) okunur. İkisi de okunamazsa bozuk dosya silinmez,
+     * ".bozuk-<zaman>" adıyla saklanır; böylece sonraki kayıt veriyi sessizce boş listeyle ezmez.
+     */
+    /** Açılışta bir sorun olduysa kullanıcıya gösterilecek açıklama (kurtarma bilgisi); sorun yoksa null. */
+    var loadNote: String? = null
+        private set
+
+    fun load(): List<SchoolClass> {
+        loadNote = null
+        if (!file.exists() && !bak.exists()) return emptyList()
+        for ((i, f) in listOf(file, bak).withIndex()) {
+            if (!f.exists()) continue
+            try {
+                val r = parseStrict(f.readText())
+                if (i == 1) loadNote = "Ana liste dosyası okunamadı; son sağlam yedekten ${r.size} sınıf yüklendi. Bozuk dosya cihazda saklandı."
+                return r
+            } catch (e: Exception) {
+                // sıradaki adayı dene
+            }
+        }
+        try {
+            if (file.exists()) file.copyTo(File(file.parentFile, file.name + ".bozuk-" + System.currentTimeMillis()), overwrite = true)
+        } catch (e: Exception) {
+            // yoksay
+        }
+        loadNote = "Liste dosyası bozuk olduğu için okunamadı ve yedek de yok. Bozuk dosya silinmeden cihazda saklandı. " +
+            "Elinizde Ayarlar'dan aldığınız bir yedek varsa 'Geri yükle' ile döndürebilirsiniz."
+        return emptyList()
+    }
+
+    /** Yedek geri yükleme gibi yerlerde: bozuk metinde boş liste döner. */
+    fun parse(text: String): List<SchoolClass> = try {
+        parseStrict(text)
     } catch (e: Exception) {
         emptyList()
     }
 
-    fun parse(text: String): List<SchoolClass> {
-        return try {
+    fun parseStrict(text: String): List<SchoolClass> {
+        return run {
             val root = JSONObject(text)
-            val arr = root.optJSONArray("classes") ?: return emptyList()
+            val arr = root.getJSONArray("classes")
             val out = ArrayList<SchoolClass>()
             for (i in 0 until arr.length()) {
                 val c = arr.optJSONObject(i) ?: continue
@@ -151,13 +185,13 @@ class RosterStore(private val file: File) {
                 out.add(SchoolClass(c.optString("id"), c.optString("name"), students))
             }
             out
-        } catch (e: Exception) {
-            emptyList()
         }
     }
 
-    fun save(classes: List<SchoolClass>) {
-        try {
+
+    /** Kaydeder; başarılıysa null, değilse hata açıklaması döner (hata sessizce yutulmaz). */
+    fun save(classes: List<SchoolClass>): String? {
+        return try {
             val arr = JSONArray()
             for (c in classes) {
                 val sa = JSONArray()
@@ -178,14 +212,35 @@ class RosterStore(private val file: File) {
             }
             val root = JSONObject().put("version", 1).put("classes", arr)
             file.parentFile?.mkdirs()
+            val text = root.toString()
+            parseStrict(text)   // yazmadan önce kendi çıktımızı doğrula
             val tmp = File(file.parentFile, file.name + ".tmp")
-            tmp.writeText(root.toString())
-            if (!tmp.renameTo(file)) {
-                file.writeText(root.toString())
-                tmp.delete()
+            tmp.writeText(text)
+            // Mevcut sağlam dosya yedeğe alınır; yeni dosya yerine geçmeden önce eski veri korunur.
+            if (file.exists()) {
+                try {
+                    parseStrict(file.readText())   // bozuk dosya sağlam yedeğin üzerine yazılmaz
+                    file.copyTo(bak, overwrite = true)
+                } catch (e: Exception) {
+                    // yedek alınamadı; yine de devam
+                }
             }
+            try {
+                java.nio.file.Files.move(
+                    tmp.toPath(), file.toPath(),
+                    java.nio.file.StandardCopyOption.ATOMIC_MOVE, java.nio.file.StandardCopyOption.REPLACE_EXISTING
+                )
+            } catch (e: Exception) {
+                java.nio.file.Files.move(tmp.toPath(), file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            }
+            // Yazılan dosyayı geri okuyup sınıf ve öğrenci sayılarını doğrula.
+            val back = parseStrict(file.readText())
+            if (back.size != classes.size || back.sumOf { it.students.size } != classes.sumOf { it.students.size }) {
+                throw java.io.IOException("Kayıt doğrulaması tutmadı")
+            }
+            null
         } catch (e: Exception) {
-            // kalıcılık başarısız olsa da uygulama çalışmaya devam eder
+            e.message ?: e.javaClass.simpleName
         }
     }
 }

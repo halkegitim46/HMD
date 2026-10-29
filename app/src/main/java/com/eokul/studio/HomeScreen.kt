@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -47,6 +48,7 @@ fun HomeScreen(studio: StudioViewModel) {
     var newClassOpen by remember { mutableStateOf(false) }
     var renameId by remember { mutableStateOf<String?>(null) }
     var deleteId by remember { mutableStateOf<String?>(null) }
+    var alsoFilesClass by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -69,6 +71,10 @@ fun HomeScreen(studio: StudioViewModel) {
                             DropdownMenuItem(text = { Text("📦 Tüm sınıflar tek ZIP (e-Okul)") }, enabled = studio.classes.isNotEmpty(), onClick = {
                                 toolsMenu = false
                                 studio.exportAllEokulZip()
+                            })
+                            DropdownMenuItem(text = { Text("🩺 Veri denetimi") }, enabled = studio.classes.isNotEmpty(), onClick = {
+                                toolsMenu = false
+                                studio.auditData()
                             })
                             DropdownMenuItem(text = { Text("✂ Toplu kırpma (hazır fotoğraflar)") }, onClick = {
                                 toolsMenu = false
@@ -99,6 +105,8 @@ fun HomeScreen(studio: StudioViewModel) {
                     }
                 }
             }
+
+            if (studio.classes.isNotEmpty()) SummaryCard(studio)
 
             if (studio.classes.isEmpty()) {
                 Column(
@@ -140,6 +148,15 @@ fun HomeScreen(studio: StudioViewModel) {
                 modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
             ) { Text("＋ Sınıf ekle") }
         }
+    }
+
+    studio.auditReport?.let { rep ->
+        AlertDialog(
+            onDismissRequest = { studio.dismissAudit() },
+            title = { Text("Veri denetimi") },
+            text = { Text(rep, modifier = Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) },
+            confirmButton = { TextButton(onClick = { studio.dismissAudit() }) { Text("Tamam") } }
+        )
     }
 
     if (newClassOpen) {
@@ -185,19 +202,67 @@ fun HomeScreen(studio: StudioViewModel) {
             onDismissRequest = { deleteId = null },
             title = { Text("Sınıf silinsin mi?") },
             text = {
-                Text(
-                    "“${del.name}” ve ${del.students.size} öğrencilik listesi uygulamadan silinir. " +
-                        "Kayıt klasöründeki fotoğraf dosyaları silinmez."
-                )
+                Column {
+                    Text("“${del.name}” ve ${del.students.size} öğrencilik listesi uygulamadan silinir.")
+                    Row(
+                        Modifier.fillMaxWidth().clickable { alsoFilesClass = !alsoFilesClass }.padding(top = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        androidx.compose.material3.Checkbox(checked = alsoFilesClass, onCheckedChange = { alsoFilesClass = it })
+                        Text(
+                            "Kayıt klasöründeki fotoğraf dosyalarını (Orijinaller dahil) da sil",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    if (alsoFilesClass) Text(
+                        "Bu işlem geri alınamaz.",
+                        color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    studio.deleteClass(del.id)
+                    studio.deleteClass(del.id, alsoFilesClass)
                     deleteId = null
+                    alsoFilesClass = false
                 }) { Text("Sil") }
             },
             dismissButton = { TextButton(onClick = { deleteId = null }) { Text("Vazgeç") } }
         )
+    }
+}
+
+@Composable
+private fun SummaryCard(studio: StudioViewModel) {
+    val classes = studio.classes
+    val total = classes.sumOf { it.students.size }
+    val done = classes.sumOf { it.capturedCount }
+    val missing = total - done
+    val retake = classes.sumOf { c -> c.students.count { it.retake } }
+    val last = studio.settings.lastBackupMs
+    val backupText = if (last == 0L) "Yedek: hiç alınmadı"
+    else "Yedek: " + java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale("tr")).format(java.util.Date(last))
+    val stale = done > 0 && (last == 0L || System.currentTimeMillis() - last > 7L * 24 * 3600 * 1000)
+    Card(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Text(
+                "${classes.size} sınıf · $total öğrenci",
+                style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold
+            )
+            Text(
+                "✅ $done çekildi   ⏳ $missing eksik" + if (retake > 0) "   🔁 $retake tekrar" else "",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                backupText + if (stale) " — yedek almanız önerilir" else "",
+                style = MaterialTheme.typography.bodySmall,
+                color = if (stale) Color(0xFFE08A00) else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

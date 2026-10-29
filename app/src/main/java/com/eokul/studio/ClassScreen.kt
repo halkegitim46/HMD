@@ -67,6 +67,7 @@ fun ClassScreen(studio: StudioViewModel, classId: String) {
     var renameFor by remember { mutableStateOf<Student?>(null) }
     var deleteFor by remember { mutableStateOf<Student?>(null) }
     var clearFor by remember { mutableStateOf<Student?>(null) }
+    var alsoFiles by remember { mutableStateOf(false) }
     var addOpen by remember { mutableStateOf(false) }
     var toolsOpen by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
@@ -257,11 +258,23 @@ fun ClassScreen(studio: StudioViewModel, classId: String) {
         AlertDialog(
             onDismissRequest = { deleteFor = null },
             title = { Text("Öğrenci listeden çıkarılsın mı?") },
-            text = { Text("${del.no} · ${del.name}\nKayıt klasöründeki dosyalar silinmez.") },
+            text = {
+                Column {
+                    Text("${del.no} · ${del.name}\nUygulamadaki kayıt ve küçük fotoğraf silinir.")
+                    Row(
+                        Modifier.fillMaxWidth().clickable { alsoFiles = !alsoFiles }.padding(top = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        androidx.compose.material3.Checkbox(checked = alsoFiles, onCheckedChange = { alsoFiles = it })
+                        Text("Kayıt klasöründeki fotoğraf dosyalarını da sil", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            },
             confirmButton = {
                 TextButton(onClick = {
-                    studio.deleteStudent(cls.id, del.no)
+                    studio.deleteStudent(cls.id, del.no, alsoFiles)
                     deleteFor = null
+                    alsoFiles = false
                 }) { Text("Çıkar") }
             },
             dismissButton = { TextButton(onClick = { deleteFor = null }) { Text("Vazgeç") } }

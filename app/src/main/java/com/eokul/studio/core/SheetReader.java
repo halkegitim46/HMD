@@ -23,6 +23,7 @@ public final class SheetReader {
 
     /** Dosya içeriğinden ilk sayfanın metnini üretir; desteklenmeyen biçimde IOException. */
     public static String readText(byte[] data) throws IOException {
+        if (data.length > 50L * 1024 * 1024) throw new IOException("Dosya çok büyük (en fazla 50 MB)");
         List<String[]> rows;
         if (data.length > 4 && data[0] == 'P' && data[1] == 'K') {
             rows = readXlsx(data);
@@ -76,18 +77,34 @@ public final class SheetReader {
     // =================================================================== XLSX
 
     private static List<String[]> readXlsx(byte[] data) throws IOException {
-        String shared = null, sheet = null;
+        String shared = null, sheet = null, workbook = null, rels = null;
         Map<String, String> sheets = new TreeMap<>();
+        int entries = 0;
         try (ZipInputStream zin = new ZipInputStream(new ByteArrayInputStream(data))) {
             ZipEntry e;
             while ((e = zin.getNextEntry()) != null) {
+                if (++entries > 2000) throw new IOException("Excel dosyası beklenenden fazla kayıt içeriyor");
                 String n = e.getName();
                 if (n.equals("xl/sharedStrings.xml")) shared = new String(readAll(zin), "UTF-8");
-                else if (n.startsWith("xl/worksheets/sheet") && n.endsWith(".xml")) sheets.put(n, new String(readAll(zin), "UTF-8"));
+                else if (n.equals("xl/workbook.xml")) workbook = new String(readAll(zin), "UTF-8");
+                else if (n.equals("xl/_rels/workbook.xml.rels")) rels = new String(readAll(zin), "UTF-8");
+                else if (n.startsWith("xl/worksheets/") && n.endsWith(".xml") && n.indexOf('/', 14) < 0) sheets.put(n, new String(readAll(zin), "UTF-8"));
             }
         }
         if (sheets.isEmpty()) throw new IOException("Çalışma sayfası bulunamadı");
-        sheet = sheets.values().iterator().next();
+        // Sekme sırasındaki ilk sayfa: workbook.xml → ilişki kimliği → dosya yolu. Çözülemezse doğal sıralamayla ilk dosya.
+        String first = firstSheetPath(workbook, rels);
+        if (first != null && sheets.containsKey(first)) sheet = sheets.get(first);
+        else {
+            List<String> names = new ArrayList<>(sheets.keySet());
+            java.util.Collections.sort(names, (x, y) -> {
+                String a = x.replaceAll("\\D", ""), b = y.replaceAll("\\D", "");
+                int ia = a.isEmpty() ? 0 : Integer.parseInt(a.length() > 9 ? a.substring(0, 9) : a);
+                int ib = b.isEmpty() ? 0 : Integer.parseInt(b.length() > 9 ? b.substring(0, 9) : b);
+                return ia != ib ? Integer.compare(ia, ib) : x.compareTo(y);
+            });
+            sheet = sheets.get(names.get(0));
+        }
 
         List<String> sst = new ArrayList<>();
         if (shared != null) {
@@ -140,6 +157,24 @@ public final class SheetReader {
         return toRows(grid);
     }
 
+    private static String firstSheetPath(String workbook, String rels) {
+        if (workbook == null || rels == null) return null;
+        Matcher sm = Pattern.compile("<sheet\\b[^>]*?r:id=\"([^\"]+)\"", Pattern.DOTALL).matcher(workbook);
+        if (!sm.find()) return null;
+        String rid = sm.group(1);
+        Matcher rm = Pattern.compile("<Relationship\\b([^>]*)>", Pattern.DOTALL).matcher(rels);
+        while (rm.find()) {
+            String a = rm.group(1);
+            Matcher id = Pattern.compile("\\bId=\"([^\"]+)\"").matcher(a);
+            Matcher tg = Pattern.compile("\\bTarget=\"([^\"]+)\"").matcher(a);
+            if (id.find() && id.group(1).equals(rid) && tg.find()) {
+                String t = tg.group(1);
+                return t.startsWith("/") ? t.substring(1) : "xl/" + t;
+            }
+        }
+        return null;
+    }
+
     private static int colIndex(String letters) {
         int n = 0;
         for (int i = 0; i < letters.length(); i++) n = n * 26 + (letters.charAt(i) - 'A' + 1);
@@ -184,11 +219,18 @@ public final class SheetReader {
         return rows;
     }
 
+    private static final long MAX_PART_BYTES = 64L * 1024 * 1024;
+
     private static byte[] readAll(InputStream in) throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         byte[] buf = new byte[8192];
         int n;
-        while ((n = in.read(buf)) > 0) bos.write(buf, 0, n);
+        long total = 0;
+        while ((n = in.read(buf)) > 0) {
+            total += n;
+            if (total > MAX_PART_BYTES) throw new IOException("Excel dosyasındaki bir bölüm beklenenden büyük");
+            bos.write(buf, 0, n);
+        }
         return bos.toByteArray();
     }
 
@@ -217,29 +259,56 @@ public final class SheetReader {
         }
         byte[] dir = chain(f, fat, dirStart, sec, -1);
         int rootStart = -1;
-        int wStart = -1, wSize = 0;
+        List<Object[]> streams = new ArrayList<>();   // {ad, başlangıç, boyut}
         for (int p = 0; p + 128 <= dir.length; p += 128) {
             int nameLen = u16(dir, p + 0x40);
-            if (nameLen < 2) continue;
+            if (nameLen < 2 || nameLen > 64) continue;
             String name = new String(dir, p, nameLen - 2, "UTF-16LE");
             int type = dir[p + 0x42] & 255;
             int start = i32(dir, p + 0x74), size = i32(dir, p + 0x78);
             if (type == 5) rootStart = start;
-            if (type == 2 && (name.equals(wantA) || name.equals(wantB)) && wStart < 0) {
-                wStart = start;
-                wSize = size;
-            }
+            if (type == 2) streams.add(new Object[]{name, start, size});
         }
-        if (wStart < 0) throw new IOException("Workbook akışı bulunamadı");
+        // Aday sırası: bilinen adlar (büyük/küçük harf fark etmez), sonra diğer tüm akışlar. Her aday BIFF "BOF" kaydıyla başlamalı.
+        List<Object[]> order = new ArrayList<>();
+        for (Object[] st : streams) {
+            String n = (String) st[0];
+            if (n.equalsIgnoreCase(wantA) || n.equalsIgnoreCase(wantB)) order.add(st);
+        }
+        for (Object[] st : streams) if (!order.contains(st)) order.add(st);
+        for (Object[] st : order) {
+            byte[] data;
+            try {
+                data = extract(f, fat, sec, cutoff, rootStart, miniFatStart, nMiniFat, miniSec, (Integer) st[1], (Integer) st[2]);
+            } catch (RuntimeException e) {
+                continue;
+            }
+            if (data.length >= 4 && (data[1] & 255) == 0x08 && ((data[0] & 255) == 0x09)) return data;   // BIFF8 BOF (0x0809)
+            if (data.length >= 4 && (data[1] & 255) <= 0x08 && (data[0] & 255) == 0x09) return data;    // eski BIFF (0x0009/0x0209/0x0409)
+        }
+        StringBuilder names = new StringBuilder();
+        boolean encrypted = false;
+        for (Object[] st : streams) {
+            String n = (String) st[0];
+            if (n.equalsIgnoreCase("EncryptedPackage") || n.equalsIgnoreCase("EncryptionInfo")) encrypted = true;
+            if (names.length() > 0) names.append(", ");
+            names.append(n.replaceAll("[\\p{Cntrl}]", "?"));
+        }
+        if (encrypted) throw new IOException("Excel dosyası parolalı/şifreli; parolasız kaydedip tekrar deneyin");
+        throw new IOException("Workbook akışı bulunamadı (dosyadaki akışlar: " + (names.length() == 0 ? "yok" : names) + ")");
+    }
+
+    private static byte[] extract(byte[] f, int[] fat, int sec, int cutoff, int rootStart, int miniFatStart, int nMiniFat,
+                                  int miniSec, int wStart, int wSize) throws IOException {
+        if (wStart < 0 || wSize < 0) return new byte[0];
         if (wSize >= cutoff) return chain(f, fat, wStart, sec, wSize);
-        // mini akış
         byte[] mini = chain(f, fat, rootStart, sec, -1);
-        byte[] miniFatBytes = chain(f, fat, miniFatStart, sec, nMiniFat * sec);
+        byte[] miniFatBytes = chain(f, fat, miniFatStart, sec, -1);
         int[] miniFat = new int[miniFatBytes.length / 4];
         for (int i = 0; i < miniFat.length; i++) miniFat[i] = i32(miniFatBytes, 4 * i);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         int s = wStart, guard = 0;
-        while (s >= 0 && guard++ < 1_000_000) {
+        while (s >= 0 && s < miniFat.length && guard++ < 1_000_000) {
             int off = s * miniSec;
             if (off + miniSec > mini.length) break;
             out.write(mini, off, miniSec);

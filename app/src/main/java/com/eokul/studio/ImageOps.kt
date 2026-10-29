@@ -33,7 +33,7 @@ object Faces {
         FaceDetection.getClient(
             FaceDetectorOptions.Builder()
                 .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
-                .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_NONE)
+                .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)   // göz noktaları: kadraj ve eğiklik kontrolü
                 .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_NONE)
                 .setMinFaceSize(0.08f)
                 .build()
@@ -79,7 +79,12 @@ object Faces {
                         val r = f.boundingBox
                         RawFace(
                             Box(r.left.toDouble(), r.top.toDouble(), r.right.toDouble(), r.bottom.toDouble()),
-                            f.headEulerAngleZ, f.headEulerAngleY
+                            f.headEulerAngleZ, f.headEulerAngleY,
+                            run {
+                                val l = f.getLandmark(com.google.mlkit.vision.face.FaceLandmark.LEFT_EYE)?.position
+                                val r2 = f.getLandmark(com.google.mlkit.vision.face.FaceLandmark.RIGHT_EYE)?.position
+                                if (l != null && r2 != null) doubleArrayOf(l.x.toDouble(), l.y.toDouble(), r2.x.toDouble(), r2.y.toDouble()) else null
+                            }
                         )
                     }
                     cont.resume(boxes)
@@ -94,7 +99,7 @@ object Faces {
 }
 
 /** ML Kit yüzü: kutu + baş eğikliği (roll) ve dönüklüğü (yaw), derece. */
-class RawFace(val box: Box, val roll: Float, val yaw: Float)
+class RawFace(val box: Box, val roll: Float, val yaw: Float, val eyes: DoubleArray? = null)
 
 /** Kişi/arka plan maskesi (0..1 güven değerleri). */
 class PersonMask(val w: Int, val h: Int, val data: FloatArray)
@@ -245,10 +250,11 @@ object ImageOps {
             )
             // 1) kişi maskesinden ölçülen saç tepesi (en güvenilir); 2) renk/arka plan analizi; 3) yüz oranı
             val fromMask = if (mask != null) maskHeadTop(mask, b) / k else Double.NaN
+            val eyes = rf.eyes?.let { e -> doubleArrayOf(e[0] / k, e[1] / k, e[2] / k, e[3] / k) }
             if (!fromMask.isNaN()) {
-                FaceInfo(box, fromMask, true, rf.roll, rf.yaw)
+                FaceInfo(box, fromMask, true, rf.roll, rf.yaw, eyes)
             } else {
-                FaceInfo(box, HeadTop.estimate(pixels, w, h, box.toArray()), false, rf.roll, rf.yaw)
+                FaceInfo(box, HeadTop.estimate(pixels, w, h, box.toArray()), false, rf.roll, rf.yaw, eyes)
             }
         }.filter { it.box.width >= 8 && it.box.height >= 8 }
             .sortedByDescending { it.box.width * it.box.height }

@@ -17,10 +17,21 @@ Telefonla öğrenci fotoğrafı çek → e-Okul ölçüsüne (133×171) otomatik
 Çıktı: 4:4:4 JPEG, kalite 100, 300 DPI, sRGB profili gömülü, en az 20 KB.
 
 ## APK derleme (GitHub Actions)
-1. GitHub'da yeni (özel) bir depo oluştur, bu klasörün içeriğini yükle (`.github` klasörü dahil).
-2. **Actions → Build APK → Run workflow** (veya her push'ta otomatik çalışır).
-3. Bitince çalıştırmanın altındaki **Artifacts → EOkulFotoStudio-apk** dosyasını indir, zip'ten çıkan `app-debug.apk`'yı telefona kur
+1. GitHub'da **özel (private)** bir depo oluştur, bu klasörün içeriğini yükle (`.github` klasörü dahil).
+2. Her push'ta (veya **Actions → APK Derle → Run workflow**) önce birim testleri çalışır, geçerse release APK derlenir.
+3. Bitince çalıştırmanın altındaki **Artifacts → EOkulFotoStudio-apk** dosyasını indir; zip'ten çıkan `app-release.apk`'yı telefona kur
    ("bilinmeyen kaynaklardan yükleme" izni gerekir).
+4. Sürüm kodu her çalıştırmada otomatik artar (`GITHUB_RUN_NUMBER`), sürüm adı `1.0.<çalıştırma no>`.
+
+### Sabit imza anahtarı (güncellemelerin üstüne kurulması için, bir kez yapılır)
+İmza anahtarı ve parolaları **kaynak kodda tutulmaz**. Anahtar yoksa APK debug anahtarıyla imzalanır (kurulur, fakat her
+derlemede imza değiştiği için yeni sürüm eskisinin üstüne kurulmaz; önce yedek alıp eskisini kaldırmak gerekir).
+1. **Actions → "Imza anahtari uret (bir kez)" → Run workflow** (yalnızca özel depoda).
+2. Bitince çalıştırmanın **Artifacts → imza-anahtari** dosyasını indir (`eokul-anahtar.b64.txt`).
+3. **Settings → Secrets and variables → Actions** altında şu gizli değişkenleri oluştur (değerleri dosyadan kopyala):
+   `EOKUL_KEYSTORE_BASE64`, `EOKUL_KEYSTORE_PASSWORD`, `EOKUL_KEY_ALIAS`, `EOKUL_KEY_PASSWORD`.
+4. Anahtar üretme çalıştırmasını ve yüklenen artefaktı sil. Anahtarı güvenli bir yerde ayrıca sakla: kaybedersen
+   uygulama güncellemeleri eski kurulumların üstüne kurulamaz.
 
 ## Önemli not
 Kotlin/Compose/CameraX kodu bu ortamda derlenemedi (Android SDK'ya erişim yok). Çekirdek algoritmalar (kırpma, yeniden
@@ -44,3 +55,14 @@ günlüğünü (hata satırlarını) yapıştır, düzeltelim.
 ## Kontrol sayfası ve otomatik çekim ayarı
 - Sınıf menüsü (⋮) → "Kontrol sayfası": tüm küçük fotoğraflar ızgarada; dokununca büyür, yeniden çek / kırpmayı düzenle. Eksikler kırmızı çerçeveli.
 - Ayarlar → "Otomatik çekim": konum toleransı (sıkı ↔ gevşek) ve sabit bekleme süresi.
+
+## Testler
+`app/src/test` altındaki JUnit testleri (liste ayrıştırma, Excel okuma, kırpma / kadraj, JPEG, kalite ölçümü) her derlemede
+otomatik çalışır; başarısız olursa APK üretilmez ve `test-raporu` yüklenir.
+
+## Güvenilirlik notları
+- Liste dosyası (`roster.json`) atomik yazılır, her kayıtta doğrulanır, son sağlam kopya `.bak` olarak tutulur; bozuksa yedekten
+  okunur ve bozuk dosya silinmeden saklanır.
+- Kayıt klasörüne yazarken önce geçici dosya, sonra yer değiştirme yapılır; eski dosya yeni içerik doğrulanmadan silinmez.
+- Yedek / ZIP akış olarak yazılır; geri yükleme geçici klasöre açar, sınırları ve dosya yollarını doğrular, başarısızlıkta eski veriyi korur.
+- Ana ekran menüsünde "Veri denetimi" kayıtlarla dosyalar arasındaki tutarsızlıkları raporlar.

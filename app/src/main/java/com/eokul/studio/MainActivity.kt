@@ -33,6 +33,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            // PIN açıkken son uygulamalar ekranında ve ekran görüntülerinde öğrenci bilgileri görünmesin.
+            val secure = studio.settings.pinHash != null
+            androidx.compose.runtime.SideEffect {
+                if (secure) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+            }
             EOkulTheme {
                 AppRoot(vm, studio)
             }
@@ -146,6 +152,15 @@ fun AppRoot(vm: AppViewModel, studio: StudioViewModel) {
             title = { Text("Kaydetme hataları") },
             text = { Text(detail) },
             confirmButton = { TextButton(onClick = { vm.dismissFailures() }) { Text("Tamam") } }
+        )
+    }
+
+    studio.startupNote?.let { note ->
+        AlertDialog(
+            onDismissRequest = { studio.dismissStartupNote() },
+            title = { Text("Liste kurtarma") },
+            text = { Text(note) },
+            confirmButton = { TextButton(onClick = { studio.dismissStartupNote() }) { Text("Tamam") } }
         )
     }
 

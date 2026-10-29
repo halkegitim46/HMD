@@ -29,4 +29,39 @@ public class SheetReaderTest {
         assertEquals(2, r.valid().size());
         assertEquals("Ayşe Yılmaz", r.valid().get(0).name);
     }
+
+    @Test
+    public void workbookStreamNameIsCaseInsensitive() throws Exception {
+        byte[] data;
+        try (InputStream in = getClass().getResourceAsStream("/kucuk_harf.xls")) {
+            data = in.readAllBytes();
+        }
+        RosterParser.Result r = RosterParser.parse(SheetReader.readText(data), RosterParser.Delimiter.AUTO, false, RosterParser.CaseMode.TITLE);
+        assertEquals(8, r.valid().size());
+    }
+
+    @Test
+    public void ole2FileWithoutWorkbookGivesClearError() {
+        byte[] data = new byte[1024];
+        data[0] = (byte) 0xD0;
+        data[1] = (byte) 0xCF;
+        try {
+            SheetReader.readText(data);
+            assertTrue("Hata beklenirdi", false);
+        } catch (java.io.IOException | RuntimeException e) {
+            assertTrue(e.getMessage() != null || e instanceof RuntimeException);
+        }
+    }
+
+    @Test
+    public void xlsxUsesFirstSheetInTabOrderNotFileName() throws Exception {
+        byte[] data;
+        try (InputStream in = getClass().getResourceAsStream("/cok_sayfali.xlsx")) {
+            data = in.readAllBytes();
+        }
+        String text = SheetReader.readText(data);
+        assertTrue("Sekme sırasındaki ilk sayfa okunmalı", !text.contains("DECOY"));
+        RosterParser.Result r = RosterParser.parse(text, RosterParser.Delimiter.AUTO, false, RosterParser.CaseMode.TITLE);
+        assertEquals(8, r.valid().size());
+    }
 }

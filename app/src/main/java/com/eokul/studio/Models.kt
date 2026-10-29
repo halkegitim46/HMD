@@ -31,7 +31,10 @@ data class Box(val x1: Double, val y1: Double, val x2: Double, val y2: Double) {
 }
 
 /** Algılanan yüz. [headTop] saç tepesinin y koordinatıdır; bulunamazsa NaN. */
-data class FaceInfo(val box: Box, val headTop: Double, val trusted: Boolean = false, val roll: Float = 0f, val yaw: Float = 0f)
+data class FaceInfo(val box: Box, val headTop: Double, val trusted: Boolean = false, val roll: Float = 0f, val yaw: Float = 0f,
+    /** {solX, solY, sağX, sağY} göz noktaları (çalışma görüntüsü koordinatları); algılanamadıysa null. */
+    val eyes: DoubleArray? = null
+)
 
 data class PhotoItem(
     val name: String,

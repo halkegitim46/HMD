@@ -12,31 +12,36 @@ android {
         applicationId = "com.eokul.studio"
         minSdk = 29
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        // CI'da her çalıştırma numarası sürüm kodunu artırır; yerelde 1.
+        val runNo = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionCode = runNo
+        versionName = "1.0.$runNo"
         // Yalnızca modern telefon mimarisi: x86/armeabi-v7a yerel kütüphaneleri APK'yı şişirir.
         ndk { abiFilters += listOf("arm64-v8a") }
     }
 
-    // Sabit imza anahtarı: her derleme aynı imzayı taşır, böylece yeni APK eskisinin üzerine (veri kaybetmeden) kurulur.
+    // İmza bilgileri kaynak kodda DEĞİL, ortam değişkenlerinde (GitHub Secrets) tutulur.
+    // Anahtar yoksa release sürümü Android'in debug anahtarıyla imzalanır (kurulur ama her derlemede imza değişir).
+    val ksFile = System.getenv("EOKUL_KEYSTORE_FILE")
+    val hasReleaseKey = ksFile != null && file(ksFile).exists() && System.getenv("EOKUL_KEYSTORE_PASSWORD") != null
     signingConfigs {
-        create("eokul") {
-            storeFile = file("eokul.jks")
-            storePassword = "eokul2026"
-            keyAlias = "eokul"
-            keyPassword = "eokul2026"
+        if (hasReleaseKey) {
+            create("eokulRelease") {
+                storeFile = file(ksFile!!)
+                storePassword = System.getenv("EOKUL_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("EOKUL_KEY_ALIAS") ?: "eokul"
+                keyPassword = System.getenv("EOKUL_KEY_PASSWORD") ?: System.getenv("EOKUL_KEYSTORE_PASSWORD")
+            }
         }
     }
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("eokul")
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Debug: Android'in varsayılan debug anahtarı (özel anahtar kullanılmaz).
+            isMinifyEnabled = false
         }
         release {
-            signingConfig = signingConfigs.getByName("eokul")
+            signingConfig = if (hasReleaseKey) signingConfigs.getByName("eokulRelease") else signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
