@@ -18,13 +18,25 @@ android {
         ndk { abiFilters += listOf("arm64-v8a") }
     }
 
+    // Sabit imza anahtarı: her derleme aynı imzayı taşır, böylece yeni APK eskisinin üzerine (veri kaybetmeden) kurulur.
+    signingConfigs {
+        create("eokul") {
+            storeFile = file("eokul.jks")
+            storePassword = "eokul2026"
+            keyAlias = "eokul"
+            keyPassword = "eokul2026"
+        }
+    }
+
     buildTypes {
         debug {
+            signingConfig = signingConfigs.getByName("eokul")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         release {
+            signingConfig = signingConfigs.getByName("eokul")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

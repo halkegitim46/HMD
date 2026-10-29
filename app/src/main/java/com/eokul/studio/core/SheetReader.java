@@ -46,6 +46,29 @@ public final class SheetReader {
         return sb.toString();
     }
 
+    /** .xls uzantılı ama aslında HTML tablo olan dosyalar (bazı sistemlerin "Excel'e aktar" çıktısı). */
+    public static boolean looksLikeHtml(String t) {
+        String h = t.length() > 600 ? t.substring(0, 600) : t;
+        h = h.toLowerCase(java.util.Locale.ROOT);
+        return h.contains("<table") || h.contains("<html") || h.contains("<tr");
+    }
+
+    public static String htmlToText(String html) {
+        String t = html.replaceAll("(?is)<(script|style)[^>]*>.*?</\\1>", " ");
+        t = t.replaceAll("(?i)</t[dh]\\s*>", "\t").replaceAll("(?i)</tr\\s*>", "\n").replaceAll("(?i)<br\\s*/?>", " ");
+        t = t.replaceAll("(?s)<[^>]*>", "");
+        t = t.replace("&nbsp;", " ").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&amp;", "&");
+        t = unescape(t);
+        StringBuilder sb = new StringBuilder();
+        for (String line : t.split("\\r?\\n")) {
+            String[] cells = line.split("\t", -1);
+            StringBuilder l = new StringBuilder();
+            for (int i = 0; i < cells.length; i++) { if (i > 0) l.append('\t'); l.append(cells[i].trim().replaceAll("\\s+", " ")); }
+            if (l.toString().replace("\t", "").trim().length() > 0) sb.append(l).append('\n');
+        }
+        return sb.toString();
+    }
+
     public static boolean looksLikeExcel(byte[] d) {
         return d.length > 4 && ((d[0] == 'P' && d[1] == 'K') || ((d[0] & 255) == 0xD0 && (d[1] & 255) == 0xCF));
     }

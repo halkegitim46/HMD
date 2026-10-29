@@ -11,6 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.eokul.studio.core.Lanczos
 import com.eokul.studio.core.RosterParser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -684,6 +685,18 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    private fun compactOriginal(px: IntArray, w: Int, h: Int): ByteArray {
+        val k = minOf(1.0, ORIG_MAX_SIDE.toDouble() / maxOf(w, h))
+        val ow = maxOf(1, Math.round(w * k).toInt())
+        val oh = maxOf(1, Math.round(h * k).toInt())
+        val out = if (k < 1.0) Lanczos.cropResize(px, w, h, 0.0, 0.0, w.toDouble(), h.toDouble(), ow, oh) else px
+        val bmp = android.graphics.Bitmap.createBitmap(out, ow, oh, android.graphics.Bitmap.Config.ARGB_8888)
+        val bos = java.io.ByteArrayOutputStream()
+        bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, bos)
+        bmp.recycle()
+        return bos.toByteArray()
+    }
+
     private fun writeAll(
         root: Uri, cls: SchoolClass, st: Student, cap: CaptureState, px: IntArray,
         iw: Int, ih: Int, box: Box, set: Settings
@@ -696,14 +709,20 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
 
         var origUri = st.origUri
         if (!cap.fromSaved && set.keepOriginals) {
-            val bytes = ctx.contentResolver.openInputStream(cap.source)?.use { it.readBytes() }
+            var bytes = ctx.contentResolver.openInputStream(cap.source)?.use { it.readBytes() }
                 ?: throw IOException("Orijinal okunamadı")
-            val mime = ctx.contentResolver.getType(cap.source) ?: "image/jpeg"
-            val ext = when (mime) {
+            var mime = ctx.contentResolver.getType(cap.source) ?: "image/jpeg"
+            var ext = when (mime) {
                 "image/png" -> "png"
                 "image/webp" -> "webp"
                 "image/heic", "image/heif" -> "heic"
                 else -> "jpg"
+            }
+            // Orijinal kopya kompakt tutulur: uzun kenar en fazla 1600 px, JPEG %85 (~300-500 KB).
+            if (bytes.size > ORIG_MAX_BYTES) {
+                bytes = compactOriginal(px, iw, ih)
+                mime = "image/jpeg"
+                ext = "jpg"
             }
             val newUri = Output.writePath(ctx, root, listOf(clsDir, ORIGINALS_DIR), "$stem.$ext", mime, bytes)
             val old = st.origUri
@@ -722,3 +741,6 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
         return Saved(origUri, stem)
     }
 }
+
+private const val ORIG_MAX_SIDE = 1600
+private const val ORIG_MAX_BYTES = 900_000

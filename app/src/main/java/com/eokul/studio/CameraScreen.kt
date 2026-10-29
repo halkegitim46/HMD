@@ -326,6 +326,8 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
             if (l == null) {
                 readySince = 0L
                 progress = 0f
+                lastCx = -1f
+                lastCy = -1f
                 if (noReadySince == 0L) noReadySince = now
                 if (now - noReadySince >= 1000L) armed = true
                 continue
