@@ -52,7 +52,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private enum class Filter { ALL, MISSING, DONE }
+private enum class Filter { ALL, MISSING, DONE, RETAKE }
 
 @Composable
 fun ClassScreen(studio: StudioViewModel, classId: String) {
@@ -73,7 +73,7 @@ fun ClassScreen(studio: StudioViewModel, classId: String) {
 
     val q = query.trim().lowercase()
     val shown = cls.students.filter { s ->
-        (filter == Filter.ALL || (filter == Filter.MISSING && !s.captured) || (filter == Filter.DONE && s.captured)) &&
+        (filter == Filter.ALL || (filter == Filter.MISSING && !s.captured) || (filter == Filter.DONE && s.captured) || (filter == Filter.RETAKE && s.retake)) &&
             (q.isEmpty() || s.no.contains(q) || s.name.lowercase().contains(q))
     }
 
@@ -159,6 +159,11 @@ fun ClassScreen(studio: StudioViewModel, classId: String) {
                     selected = filter == Filter.DONE, onClick = { filter = Filter.DONE },
                     label = { Text("Çekilen ${cls.capturedCount}") }
                 )
+                val retakeCount = cls.students.count { it.retake }
+                if (retakeCount > 0) FilterChip(
+                    selected = filter == Filter.RETAKE, onClick = { filter = Filter.RETAKE },
+                    label = { Text("🔁 Tekrar $retakeCount") }
+                )
             }
 
             if (cls.students.isEmpty()) {
@@ -185,7 +190,8 @@ fun ClassScreen(studio: StudioViewModel, classId: String) {
                             onCamera = { studio.openCamera(cls.id, s.no) },
                             onRename = { renameFor = s },
                             onDelete = { deleteFor = s },
-                            onClear = { clearFor = s }
+                            onClear = { clearFor = s },
+                            onToggleRetake = { studio.toggleRetake(cls.id, s.no) }
                         )
                         HorizontalDivider()
                     }
@@ -286,7 +292,8 @@ private fun StudentRow(
     onCamera: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
-    onClear: () -> Unit
+    onClear: () -> Unit,
+    onToggleRetake: () -> Unit
 ) {
     var menu by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
@@ -325,9 +332,9 @@ private fun StudentRow(
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
             Text(s.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium)
             Text(
-                s.no + if (s.captured) "  ·  ✅ çekildi" else "  ·  bekliyor",
+                s.no + if (s.retake) "  ·  🔁 tekrar çekilmeli" else if (s.captured) "  ·  ✅ çekildi" else "  ·  bekliyor",
                 style = MaterialTheme.typography.bodySmall,
-                color = if (s.captured) Color(0xFF3C9A5F) else Color.Gray
+                color = if (s.retake) Color(0xFFE08A00) else if (s.captured) Color(0xFF3C9A5F) else Color.Gray
             )
         }
         Box {
@@ -342,6 +349,10 @@ private fun StudentRow(
                     onRename()
                 })
                 if (s.captured) {
+                    DropdownMenuItem(text = { Text(if (s.retake) "Tekrar işaretini kaldır" else "Tekrar çekime işaretle") }, onClick = {
+                        menu = false
+                        onToggleRetake()
+                    })
                     DropdownMenuItem(text = { Text("Fotoğrafı sil") }, onClick = {
                         menu = false
                         onClear()

@@ -83,4 +83,6 @@ dependencies {
     implementation("com.google.mlkit:face-detection:16.1.7")
     // Kişi maskesi: saç tepesini doğru ölçmek için (model uygulamanın içinde gelir).
     implementation("com.google.mlkit:segmentation-selfie:16.0.0-beta6")
+    // Birim testleri (çekirdek mantık: liste ayrıştırma, Excel okuma, kırpma/JPEG hattı, kalite ölçümü)
+    testImplementation("junit:junit:4.13.2")
 }

@@ -10,7 +10,7 @@ public final class Quality {
 
     public static final double BLUR_LIMIT = 0.28;
     public static final double DARK_LIMIT = 70.0;
-    public static final double BRIGHT_LIMIT = 190.0;
+    public static final double BRIGHT_LIMIT = 165.0;
 
     public static final class Report {
         public final double blurRatio;

@@ -118,6 +118,7 @@ fun ReviewScreen(studio: StudioViewModel) {
                 if (Math.abs(f0.roll) > 10f) warnings.add("⚠ Baş yana eğik (${Math.abs(f0.roll).toInt()}°) — başı dik tutturun.")
                 if (Math.abs(f0.yaw) > 15f) warnings.add("⚠ Yüz kameraya dönük değil (${Math.abs(f0.yaw).toInt()}°) — karşıdan çekin.")
             }
+            androidx.compose.runtime.LaunchedEffect(warnings.size) { cap.warned = warnings.isNotEmpty() }
             for (w in warnings) Text(w, color = Warn, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
             val kb = (preview?.second ?: 0) / 1024.0
             Text(

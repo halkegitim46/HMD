@@ -48,6 +48,8 @@ class CaptureState(
     var error by mutableStateOf<String?>(null)
     var session by mutableStateOf<EditSession?>(null)
     var saving by mutableStateOf(false)
+    /** İnceleme ekranında kalite/yüz uyarısı çıktı mı (kayıtta "tekrar çek" işareti olur). */
+    var warned by mutableStateOf(false)
 }
 
 class StudioViewModel(app: Application) : AndroidViewModel(app) {
@@ -179,6 +181,10 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
         if (i < 0) return
         classes[i] = fn(classes[i])
         persist()
+    }
+
+    fun toggleRetake(classId: String, no: String) {
+        updateStudent(classId, no) { it.copy(retake = !it.retake) }
     }
 
     private fun updateStudent(classId: String, no: String, fn: (Student) -> Student) {
@@ -318,7 +324,7 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
         val st = cls.students.firstOrNull { it.no == no } ?: return
         val root = settings.rootUri?.let { Uri.parse(it) }
         updateStudent(classId, no) {
-            it.copy(captured = false, box = null, origUri = null, savedStem = null, faceCount = 0, updatedAt = 0L)
+            it.copy(captured = false, box = null, origUri = null, savedStem = null, faceCount = 0, updatedAt = 0L, retake = false)
         }
         viewModelScope.launch(Dispatchers.IO) {
             Naming.privatePhoto(ctx, classId, no).delete()
@@ -645,6 +651,7 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
         val iw = s.iw
         val ih = s.ih
         val faceCount = s.faces.size
+        val warned = cap.warned
         cap.saving = true
 
         viewModelScope.launch {
@@ -653,7 +660,8 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
                 updateStudent(cap.classId, cap.no) {
                     it.copy(
                         captured = true, updatedAt = System.currentTimeMillis(), box = box,
-                        origUri = saved.origUri, savedStem = saved.stem, faceCount = faceCount
+                        origUri = saved.origUri, savedStem = saved.stem, faceCount = faceCount,
+                        retake = warned
                     )
                 }
                 cap.temp?.delete()

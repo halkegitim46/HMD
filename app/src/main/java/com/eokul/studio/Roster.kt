@@ -20,7 +20,9 @@ data class Student(
     val origUri: String? = null,
     /** Son kayıtta kullanılan dosya adı (uzantısız), örn. "12345-Ayşe Yılmaz". */
     val savedStem: String? = null,
-    val faceCount: Int = 0
+    val faceCount: Int = 0,
+    /** Kalite uyarısı aldığı veya elle işaretlendiği için yeniden çekilmesi gereken fotoğraf. */
+    val retake: Boolean = false
 )
 
 data class SchoolClass(
@@ -86,13 +88,13 @@ fun mergeStudents(existing: List<Student>, rows: List<RosterParser.Row>, mode: M
     return MergeResult(sorted, added, updated, removed)
 }
 
-/** Sıradaki fotoğrafı çekilmemiş öğrenci: önce [afterNo]'dan sonrakiler, yoksa baştan. */
+/** Sıradaki fotoğrafı çekilmemiş veya tekrar çekilmesi işaretli öğrenci: önce [afterNo]'dan sonrakiler, yoksa baştan. */
 fun nextUncaptured(cls: SchoolClass, afterNo: String?): String? {
     val list = cls.students
     val start = if (afterNo == null) 0 else list.indexOfFirst { it.no == afterNo } + 1
-    for (i in start until list.size) if (!list[i].captured) return list[i].no
+    for (i in start until list.size) if (!list[i].captured || list[i].retake) return list[i].no
     for (i in 0 until minOf(start, list.size)) {
-        if (!list[i].captured && list[i].no != afterNo) return list[i].no
+        if ((!list[i].captured || list[i].retake) && list[i].no != afterNo) return list[i].no
     }
     return null
 }
@@ -141,7 +143,8 @@ class RosterStore(private val file: File) {
                             },
                             origUri = if (s.has("origUri") && !s.isNull("origUri")) s.getString("origUri") else null,
                             savedStem = if (s.has("savedStem") && !s.isNull("savedStem")) s.getString("savedStem") else null,
-                            faceCount = s.optInt("faceCount")
+                            faceCount = s.optInt("faceCount"),
+                            retake = s.optBoolean("retake", false)
                         )
                     )
                 }
@@ -165,6 +168,7 @@ class RosterStore(private val file: File) {
                         .put("captured", s.captured)
                         .put("updatedAt", s.updatedAt)
                         .put("faceCount", s.faceCount)
+                        .put("retake", s.retake)
                     s.box?.let { o.put("box", JSONArray(listOf(it.x1, it.y1, it.x2, it.y2))) }
                     s.origUri?.let { o.put("origUri", it) }
                     s.savedStem?.let { o.put("savedStem", it) }
