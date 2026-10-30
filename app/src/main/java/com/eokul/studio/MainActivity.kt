@@ -58,37 +58,73 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private val LightScheme = lightColorScheme(
+    primary = Color(0xFF1F4E9C),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFDCE6F7),
+    onPrimaryContainer = Color(0xFF0B1F44),
+    secondary = Color(0xFF4A6286),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFE3E9F3),
+    onSecondaryContainer = Color(0xFF14233D),
+    tertiaryContainer = Color(0xFFFFEBC9),
+    onTertiaryContainer = Color(0xFF4A3000),
+    background = Color(0xFFF3F5F9),
+    onBackground = Color(0xFF1A1F2B),
+    surface = Color(0xFFF3F5F9),
+    onSurface = Color(0xFF1A1F2B),
+    surfaceVariant = Color(0xFFE6EAF1),
+    onSurfaceVariant = Color(0xFF4B5565),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFFFFFFF),
+    surfaceContainer = Color(0xFFFFFFFF),
+    surfaceContainerHigh = Color(0xFFEEF1F6),
+    surfaceContainerHighest = Color(0xFFFFFFFF),
+    outline = Color(0xFF8792A3),
+    outlineVariant = Color(0xFFD3D9E3)
+)
+
+private val DarkScheme = darkColorScheme(
+    primary = Color(0xFF8FB4F5),
+    onPrimary = Color(0xFF0A2552),
+    primaryContainer = Color(0xFF1B3A6B),
+    onPrimaryContainer = Color(0xFFD9E6FF),
+    secondary = Color(0xFFB0C3E3),
+    onSecondary = Color(0xFF1A2C4A),
+    secondaryContainer = Color(0xFF243247),
+    onSecondaryContainer = Color(0xFFD5E0F2),
+    tertiaryContainer = Color(0xFF4A3A12),
+    onTertiaryContainer = Color(0xFFFFE2A8),
+    background = Color(0xFF0E1420),
+    onBackground = Color(0xFFE3E8F1),
+    surface = Color(0xFF0E1420),
+    onSurface = Color(0xFFE3E8F1),
+    surfaceVariant = Color(0xFF232D3F),
+    onSurfaceVariant = Color(0xFFA9B3C4),
+    surfaceContainerLowest = Color(0xFF0A0F19),
+    surfaceContainerLow = Color(0xFF131B29),
+    surfaceContainer = Color(0xFF161F2F),
+    surfaceContainerHigh = Color(0xFF1C2638),
+    surfaceContainerHighest = Color(0xFF1A2434),
+    outline = Color(0xFF6B7689),
+    outlineVariant = Color(0xFF2B3649)
+)
+
+/** Sade köşeler: kartlar 12 dp, düğmeler/alanlar 8 dp. Gölge yok; kartlar zemin renginden ayrılır. */
+private val AppShapes = androidx.compose.material3.Shapes(
+    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+    small = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+    medium = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+    large = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+)
+
 @Composable
 fun EOkulTheme(content: @Composable () -> Unit) {
-    val dark = isSystemInDarkTheme()
-    val scheme = if (dark) {
-        darkColorScheme(
-            primary = Color(0xFF9BBEFF),
-            onPrimary = Color(0xFF102F60),
-            primaryContainer = Color(0xFF203D68),
-            onPrimaryContainer = Color(0xFFE0EAFF),
-            secondary = Color(0xFFB6C8E3),
-            tertiary = Color(0xFF78C9C0),
-            background = Color(0xFF10151D),
-            surface = Color(0xFF171E28),
-            surfaceVariant = Color(0xFF242E3B),
-            outlineVariant = Color(0xFF3A4655)
-        )
-    } else {
-        lightColorScheme(
-            primary = Color(0xFF285AA8),
-            onPrimary = Color.White,
-            primaryContainer = Color(0xFFE3ECFA),
-            onPrimaryContainer = Color(0xFF17365F),
-            secondary = Color(0xFF526B82),
-            tertiary = Color(0xFF087F8C),
-            background = Color(0xFFF5F7FA),
-            surface = Color(0xFFFFFFFF),
-            surfaceVariant = Color(0xFFEDF1F6),
-            outlineVariant = Color(0xFFD8E0EA)
-        )
-    }
-    MaterialTheme(colorScheme = scheme, content = content)
+    MaterialTheme(
+        colorScheme = if (isSystemInDarkTheme()) DarkScheme else LightScheme,
+        shapes = AppShapes,
+        content = content
+    )
 }
 
 @Composable

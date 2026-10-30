@@ -1,14 +1,5 @@
 # E-Okul Foto Studio (Android)
 
-## Arayüz güncellemesi
-
-- Sınıf içi öğrenci satırları kompaktlaştırıldı; fotoğraf küçük önizlemesi ve renkli durum göstergesi eklendi.
-- Kamera ekranında otomatik çekim ve yakınlaştırma kontrolleri tek bir alt panelde toplandı; canlı kalite puanı 0–100 ölçeğinde ilerleme çubuğuyla gösteriliyor.
-- Fotoğraf inceleme ekranında öğrenci bilgisi, büyük önizleme alanı ve tekrar çek/düzenle/onayla işlemleri belirginleştirildi.
-- Ayarlar; genel kayıt, çekim, kırpma, çıktı ve güvenlik/yedek bölümlerine ayrılmış kartlara dönüştürüldü.
-- Hazırlayan bilgisi: Hacimd&HMD.
-
-
 Telefonla öğrenci fotoğrafı çek → e-Okul ölçüsüne (133×171) otomatik kırp → öğrenci numarası ve adıyla kaydet.
 
 ## Nasıl kullanılır
@@ -76,10 +67,3 @@ otomatik çalışır; başarısız olursa APK üretilmez ve `test-raporu` yükle
 - Kayıt klasörüne yazarken önce geçici dosya, sonra yer değiştirme yapılır; eski dosya yeni içerik doğrulanmadan silinmez.
 - Yedek / ZIP akış olarak yazılır; geri yükleme geçici klasöre açar, sınırları ve dosya yollarını doğrular, başarısızlıkta eski veriyi korur.
 - Ana ekran menüsünde "Veri denetimi" kayıtlarla dosyalar arasındaki tutarsızlıkları raporlar.
-
-
----
-
-## Uygulama bilgisi
-
-**Hazırlayan:** Hacimd&HMD

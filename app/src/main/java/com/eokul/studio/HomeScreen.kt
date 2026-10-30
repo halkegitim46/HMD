@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -57,7 +58,7 @@ fun HomeScreen(studio: StudioViewModel) {
                     Modifier.fillMaxWidth().padding(start = 14.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(Modifier.weight(1f)) {
+                    Column(Modifier.weight(1f).padding(start = 4.dp)) {
                         Text(
                             "E-Okul Foto Studio",
                             style = MaterialTheme.typography.titleMedium,
@@ -65,9 +66,9 @@ fun HomeScreen(studio: StudioViewModel) {
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Text(
-                            "Öğrenci fotoğraf yönetimi",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f)
+                            "Öğrenci fotoğraflarını e-Okul ölçüsünde çekin, sınıf klasörlerine kaydedin.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
                         )
                     }
                     var toolsMenu by remember { mutableStateOf(false) }
@@ -143,6 +144,15 @@ fun HomeScreen(studio: StudioViewModel) {
                             onOpen = { studio.navigate(Screen.ClassDetail(c.id)) },
                             onRename = { renameId = c.id },
                             onDelete = { deleteId = c.id }
+                        )
+                    }
+                    item {
+                        Text(
+                            "Hazırlayan: Hacimd",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                     }
                 }
@@ -246,32 +256,34 @@ private fun SummaryCard(studio: StudioViewModel) {
     val done = classes.sumOf { it.capturedCount }
     val missing = total - done
     val retake = classes.sumOf { c -> c.students.count { it.retake } }
+    val last = studio.settings.lastBackupMs
+    val backupText = if (last == 0L) "Yedek: hiç alınmadı"
+    else "Yedek: " + java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale("tr")).format(java.util.Date(last))
+    val stale = done > 0 && (last == 0L || System.currentTimeMillis() - last > 7L * 24 * 3600 * 1000)
     Card(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column {
-                Text("${classes.size} sınıf · $total öğrenci", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                Text("$done fotoğraf tamamlandı · $missing bekliyor", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            if (retake > 0) {
-                Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.errorContainer) {
-                    Text("$retake tekrar", modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-                        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onErrorContainer)
-                }
-            }
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Text(
+                "${classes.size} sınıf · $total öğrenci",
+                style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold
+            )
+            Text(
+                "✅ $done çekildi   ⏳ $missing eksik" + if (retake > 0) "   🔁 $retake tekrar" else "",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                backupText + if (stale) " — yedek almanız önerilir" else "",
+                style = MaterialTheme.typography.bodySmall,
+                color = if (stale) Color(0xFFE08A00) else MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
 
-private val DoneGreen = Color(0xFF23865B)
-private val WarnOrange = Color(0xFFB66A12)
+private val DoneGreen = Color(0xFF3C9A5F)
+private val WarnOrange = Color(0xFFE08A00)
 
 @Composable
 private fun ClassCard(
@@ -285,35 +297,28 @@ private fun ClassCard(
     val done = c.capturedCount
     val missing = total - done
     val retake = c.students.count { it.retake }
-    val pct = if (total == 0) 0 else (done * 100f / total).toInt()
-    val statusColor = when {
-        total > 0 && done == total && retake == 0 -> DoneGreen
+    val complete = total > 0 && missing == 0 && retake == 0
+    val barColor = when {
+        complete -> DoneGreen
         retake > 0 -> WarnOrange
-        done > 0 -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
+        else -> MaterialTheme.colorScheme.primary
+    }
+    val sub = when {
+        total == 0 -> "Liste boş"
+        complete -> "$total öğrenci · tamamlandı"
+        else -> "$done/$total çekildi · $missing eksik" + if (retake > 0) " · $retake tekrar" else ""
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable { onOpen() },
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(Modifier.padding(start = 14.dp, end = 6.dp, top = 9.dp, bottom = 9.dp)) {
+    Card(Modifier.fillMaxWidth().clickable { onOpen() }) {
+        Column(Modifier.padding(start = 14.dp, end = 0.dp, top = 4.dp, bottom = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    c.name,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1
-                )
-                Text(
-                    "$done/$total",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = statusColor
-                )
+                Column(Modifier.weight(1f)) {
+                    Text(c.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        sub, style = MaterialTheme.typography.bodySmall,
+                        color = if (complete) DoneGreen else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 Box {
                     MoreBtn(onClick = { menu = true })
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
@@ -330,24 +335,9 @@ private fun ClassCard(
             }
             LinearProgressIndicator(
                 progress = { if (total == 0) 0f else done.toFloat() / total },
-                modifier = Modifier.fillMaxWidth().padding(end = 8.dp).padding(top = 3.dp),
-                color = statusColor,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                color = barColor,
+                modifier = Modifier.fillMaxWidth().padding(end = 14.dp)
             )
-            Spacer(Modifier.size(5.dp))
-            Row(
-                Modifier.fillMaxWidth().padding(end = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text("$total öğrenci", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("$done çekildi", style = MaterialTheme.typography.labelSmall, color = DoneGreen)
-                Text("$missing bekliyor", style = MaterialTheme.typography.labelSmall,
-                    color = if (missing > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
-                if (retake > 0) {
-                    Text("· $retake tekrar", style = MaterialTheme.typography.labelSmall, color = WarnOrange)
-                }
-            }
         }
     }
 }

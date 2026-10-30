@@ -49,6 +49,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -58,7 +59,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -518,32 +518,10 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
                         )
                     }
-                    if (score >= 0 && live != null) {
-                        Surface(
-                            color = Color(0xE817202B),
-                            shape = RoundedCornerShape(13.dp),
-                            modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp)
-                        ) {
-                            Column(Modifier.padding(horizontal = 11.dp, vertical = 8.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("KALİTE", color = Color(0xFFB9C9E0), fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold)
-                                    Text("  $score/100", color = Color.White, fontSize = 14.sp,
-                                        fontWeight = FontWeight.Bold)
-                                    Text("  ${Score.label(score)}",
-                                        color = if (score >= 70) Color(0xFF9ECE6A) else Color(0xFFE0AF68),
-                                        fontSize = 10.sp)
-                                }
-                                LinearProgressIndicator(
-                                    progress = { (score / 100f).coerceIn(0f, 1f) },
-                                    modifier = Modifier.fillMaxWidth().size(height = 4.dp, width = 112.dp),
-                                    color = if (score >= 70) Color(0xFF75C99A) else Color(0xFFE0AF68),
-                                    trackColor = Color.White.copy(alpha = 0.18f)
-                                )
-                            }
-                        }
-                    }
+                    QualityBadge(
+                        score = if (live != null) score else -1,
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp)
+                    )
                 }
             } else {
                 Column(
@@ -575,68 +553,114 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
             Text(it, color = Color(0xFFE0AF68), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 12.dp))
         }
 
-        if (hasPerm) {
-            Surface(color = Color(0xFF151C26), shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp),
-                modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 7.dp)) {
+        // ---- Kontrol paneli
+        Surface(
+            color = Color(0xFF131A27),
+            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                if (hasPerm) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Switch(checked = autoOn,
-                            onCheckedChange = { studio.updateSettings(studio.settings.copy(autoCapture = it)) })
-                        Column(Modifier.weight(1f).padding(start = 8.dp)) {
-                            Text("Akıllı otomatik çekim", color = Color.White, fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold)
-                            Text(if (autoOn) "Yüz hazır olduğunda otomatik çeker" else "Deklanşöre dokunarak çekin",
-                                color = Color(0xFF9DAABD), fontSize = 10.sp)
+                        ModeChip("Otomatik çekim", autoOn) {
+                            studio.updateSettings(studio.settings.copy(autoCapture = !autoOn))
                         }
-                        Text(if (lensBack) "ARKA KAMERA" else "ÖN KAMERA", color = Color(0xFF9DAABD),
-                            fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.size(8.dp))
+                        ModeChip("Akıllı", studio.settings.smartShot) {
+                            studio.updateSettings(studio.settings.copy(smartShot = !studio.settings.smartShot))
+                        }
+                        Slider(
+                            value = zoom, onValueChange = { zoom = it }, valueRange = 0f..0.6f,
+                            modifier = Modifier.weight(1f).padding(start = 12.dp)
+                        )
+                        Text(
+                            "${"%.1f".format(1f + zoom * 3f)}×", color = Color(0xFFB0B6C8), fontSize = 12.sp,
+                            modifier = Modifier.padding(start = 6.dp, end = 4.dp)
+                        )
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("−", color = Color.White, fontSize = 16.sp)
-                        Slider(value = zoom, onValueChange = { zoom = it }, valueRange = 0f..0.6f,
-                            modifier = Modifier.weight(1f).padding(horizontal = 8.dp))
-                        Text("+", color = Color.White, fontSize = 16.sp)
-                    }
+                }
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconBtn(CamIcons.Gallery, "Galeriden seç", { galleryPicker.launch(arrayOf("image/*")) }, tint = Color.White)
+                    IconBtn(
+                        if (torchOn) CamIcons.FlashOn else CamIcons.FlashOff,
+                        if (torchOn) "Işığı kapat" else "Işığı aç",
+                        { torchOn = !torchOn },
+                        tint = if (torchOn) Color(0xFFFFD54F) else Color.White,
+                        enabled = hasPerm && lensBack
+                    )
+                    val shutterOk = hasPerm && camera != null && !capturing
+                    Box(
+                        Modifier
+                            .size(76.dp)
+                            .border(4.dp, if (shutterOk) Color.White else Color.Gray, CircleShape)
+                            .padding(7.dp)
+                            .clip(CircleShape)
+                            .background(if (shutterOk) Color.White else Color.Gray)
+                            .clickable(enabled = shutterOk) { shoot() }
+                    )
+                    IconBtn(
+                        androidx.compose.material.icons.Icons.Filled.Refresh, "Kamerayı çevir",
+                        {
+                            torchOn = false
+                            lensBack = !lensBack
+                        },
+                        tint = Color.White, enabled = hasPerm
+                    )
+                    IconBtn(
+                        CamIcons.SkipNext, "Bu öğrenciyi atla",
+                        { studio.cameraMove(classId, no, 1) },
+                        tint = Color.White, enabled = index < cls.students.size - 1
+                    )
                 }
             }
         }
+    }
+}
 
-        // ---- Alt düğmeler: sade ve eşit aralıklı çekim araçları
+/** Açık/kapalı durumu belli olan küçük mod düğmesi. */
+@Composable
+private fun ModeChip(label: String, on: Boolean, onClick: () -> Unit) {
+    Surface(
+        color = if (on) Color(0xFF2F5FC4) else Color(0xFF232C3D),
+        shape = RoundedCornerShape(50),
+        modifier = Modifier.clip(RoundedCornerShape(50)).clickable { onClick() }
+    ) {
+        Text(
+            label,
+            color = if (on) Color.White else Color(0xFFB0B6C8),
+            fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+        )
+    }
+}
+
+/** Belirgin canlı kalite göstergesi: renkli nokta, büyük puan ve sözel derece. Yüz yoksa soluk "—". */
+@Composable
+private fun QualityBadge(score: Int, modifier: Modifier = Modifier) {
+    val col = when {
+        score < 0 -> Color(0xFF8A93A8)
+        score >= 80 -> Color(0xFF4CC38A)
+        score >= 60 -> Color(0xFFE0AF68)
+        else -> Color(0xFFE5645F)
+    }
+    Surface(color = Color.Black.copy(alpha = 0.62f), shape = RoundedCornerShape(50), modifier = modifier) {
         Row(
-            Modifier.fillMaxWidth().background(Color(0xFF151C26)).padding(horizontal = 8.dp, vertical = 9.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+            Modifier.padding(start = 10.dp, end = 14.dp, top = 5.dp, bottom = 5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconBtn(CamIcons.Gallery, "Galeriden seç", { galleryPicker.launch(arrayOf("image/*")) }, tint = Color.White)
-            IconBtn(
-                if (torchOn) CamIcons.FlashOn else CamIcons.FlashOff,
-                if (torchOn) "Işığı kapat" else "Işığı aç",
-                { torchOn = !torchOn },
-                tint = if (torchOn) Color(0xFFFFD54F) else Color.White,
-                enabled = hasPerm && lensBack
+            Box(Modifier.size(10.dp).clip(CircleShape).background(col))
+            Text(
+                if (score < 0) "—" else score.toString(),
+                color = col, fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 8.dp)
             )
-            val shutterOk = hasPerm && camera != null && !capturing
-            Box(
-                Modifier
-                    .size(76.dp)
-                    .border(4.dp, if (shutterOk) Color.White else Color.Gray, CircleShape)
-                    .padding(7.dp)
-                    .clip(CircleShape)
-                    .background(if (shutterOk) Color.White else Color.Gray)
-                    .clickable(enabled = shutterOk) { shoot() }
-            )
-            IconBtn(
-                androidx.compose.material.icons.Icons.Filled.Refresh, "Kamerayı çevir",
-                {
-                    torchOn = false
-                    lensBack = !lensBack
-                },
-                tint = Color.White, enabled = hasPerm
-            )
-            IconBtn(
-                CamIcons.SkipNext, "Bu öğrenciyi atla",
-                { studio.cameraMove(classId, no, 1) },
-                tint = Color.White, enabled = index < cls.students.size - 1
+            Text(
+                if (score < 0) "Yüz bekleniyor" else Score.label(score),
+                color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(start = 8.dp)
             )
         }
     }

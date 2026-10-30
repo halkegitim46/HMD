@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -62,6 +63,8 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
     var autoTol by remember { mutableStateOf(cur.autoTol.toFloat()) }
     var autoHold by remember { mutableStateOf(cur.autoHoldMs.toFloat()) }
     var smart by remember { mutableStateOf(cur.smartShot) }
+    var autoAcc by remember { mutableStateOf(cur.autoAccept) }
+    var accScore by remember { mutableStateOf(cur.autoAcceptScore.toFloat()) }
     var keepOrig by remember { mutableStateOf(cur.keepOriginals) }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -88,6 +91,8 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             autoHoldMs = ((autoHold / 100f).roundToInt() * 100).coerceIn(400, 4000),
             keepOriginals = keepOrig,
             smartShot = smart,
+            autoAccept = autoAcc,
+            autoAcceptScore = accScore.roundToInt().coerceIn(60, 95),
             topGap = (topGap * 100.0).roundToInt() / 100.0,
             headFrac = (headFrac * 100.0).roundToInt() / 100.0,
             jpegQuality = quality.roundToInt(),
@@ -103,23 +108,12 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             BackBtn(onClick = onClose)
-            Column {
-                Text("Ayarlar", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("Çekim, kırpma ve kayıt tercihleri", style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            Text("Ayarlar", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         }
-        Spacer(Modifier.size(12.dp))
+        Spacer(Modifier.size(8.dp))
 
-        androidx.compose.material3.Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
-        ) {
-            Column(Modifier.fillMaxWidth().padding(14.dp)) {
         // ---------------- Kayıt (sınıf akışı)
-        Text("📂  Genel", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.size(6.dp))
+        SettingsCard("Genel", "Kayıt klasörü ve çekim akışı") {
         Text(
             "Kayıt klasörü: ${studio.rootName ?: "seçilmedi"}",
             style = MaterialTheme.typography.bodyMedium
@@ -140,18 +134,8 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             Text("  Tam çözünürlüklü orijinali sakla", style = MaterialTheme.typography.bodyMedium)
         }
 
-            }
         }
-
-        Spacer(Modifier.size(14.dp))
-        androidx.compose.material3.Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
-        ) {
-            Column(Modifier.fillMaxWidth().padding(14.dp)) {
-        Text("📷  Çekim: otomatik çekim", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.size(4.dp))
+        SettingsCard("Çekim", "Akıllı çekim, otomatik çekim ve hızlı onay") {
         val tolText = when {
             autoTol < 0.85f -> "sıkı"
             autoTol > 1.2f -> "gevşek"
@@ -163,6 +147,19 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
         }
         Text(
             "Gözler kapalıysa, görüntü net değilse veya telefon sallanıyorsa çekimi bekletir; her çekimde 3 kare alıp en netini seçer (çekim yaklaşık 1 sn sürer).",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.size(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Switch(checked = autoAcc, onCheckedChange = { autoAcc = it })
+            Text("  Hızlı onay: iyi çekimi otomatik kaydet", style = MaterialTheme.typography.bodyMedium)
+        }
+        if (autoAcc) {
+            Text("Otomatik kayıt için en düşük kalite puanı: ${accScore.roundToInt()}", style = MaterialTheme.typography.bodyMedium)
+            Slider(value = accScore, onValueChange = { accScore = it }, valueRange = 60f..95f)
+        }
+        Text(
+            "Uyarısı olmayan ve puanı eşiği geçen fotoğraf, 1 sn içinde onay beklemeden kaydedilir ve sıradaki öğrenciye geçilir (\"Durdur\" ile engellenebilir). Uyarılı veya düşük puanlı fotoğrafta onay ekranı açık kalır.",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.size(8.dp))
@@ -180,20 +177,8 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-            }
         }
-
-        Spacer(Modifier.size(20.dp))
-
-        // ---------------- Kırpma
-        androidx.compose.material3.Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
-        ) {
-            Column(Modifier.fillMaxWidth().padding(14.dp)) {
-        Text("✂  Fotoğraf: kırpma", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.size(6.dp))
+        SettingsCard("Kırpma", "Baş konumu ve boyutu (e-Okul 133×171)") {
         Text("Saç üstü boşluk: %${(topGap * 100).roundToInt()}", style = MaterialTheme.typography.bodyMedium)
         Slider(value = topGap, onValueChange = { topGap = it }, valueRange = 0.01f..0.10f, steps = 8)
         Text(
@@ -215,20 +200,8 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             headFrac = def.headFrac.toFloat()
         }) { Text("Kırpma varsayılanları") }
 
-            }
         }
-
-        Spacer(Modifier.size(20.dp))
-
-        // ---------------- Çıktı
-        androidx.compose.material3.Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
-        ) {
-            Column(Modifier.fillMaxWidth().padding(14.dp)) {
-        Text("💾  Fotoğraf: çıktı ve dışa aktarma", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.size(6.dp))
+        SettingsCard("Çıktı ve dışa aktarma", "JPEG kalitesi, dosya adı denetimi, renk profili") {
         Text("JPEG kalitesi: ${quality.roundToInt()}", style = MaterialTheme.typography.bodyMedium)
         Slider(value = quality, onValueChange = { quality = it }, valueRange = 70f..100f, steps = 29)
         Text(
@@ -269,18 +242,8 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             )
         }
 
-            }
         }
-
-        Spacer(Modifier.size(20.dp))
-        androidx.compose.material3.Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
-        ) {
-            Column(Modifier.fillMaxWidth().padding(14.dp)) {
-        Text("🔒  Güvenlik ve yedek", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.size(6.dp))
+        SettingsCard("Güvenlik ve yedek", "PIN kilidi ve yedekleme") {
         OutlinedButton(onClick = { pinOpen = true }) {
             Text(if (vm.settings.pinHash != null) "🔒 PIN: açık (değiştir / kaldır)" else "🔓 PIN kilidi belirle")
         }
@@ -299,9 +262,6 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             "Yedek: sınıf listeleri ve küçük fotoğraflar kayıt klasörüne Yedek-tarih.zip olarak yazılır ve yazıldıktan sonra doğrulanır. Tam çözünürlüklü orijinaller yedeğe girmez.",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-
-
-            }
         }
 
         error?.let {
@@ -337,21 +297,13 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             "“Yeniden kırp” yalnızca elle düzenlemediğiniz fotoğrafları günceller; düzenledikleriniz korunur.",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(Modifier.size(18.dp))
-        androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Spacer(Modifier.size(12.dp))
-        Column(
-            Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text("E-Okul Foto Studio", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-            Text(
-                "Hazırlayan: Hacimd&HMD",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Spacer(Modifier.size(16.dp))
+        Spacer(Modifier.size(20.dp))
+        Text(
+            "E-Okul Foto Studio · Hazırlayan: Hacimd",
+            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        Spacer(Modifier.size(24.dp))
     }
 
     if (pinOpen) PinDialog(studio, vm.settings.pinHash != null) { pinOpen = false }
@@ -370,5 +322,21 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             },
             dismissButton = { TextButton(onClick = { confirmRestore = null }) { Text("Vazgeç") } }
         )
+    }
+}
+
+/** Ayarlar bölümü: başlık, kısa açıklama ve içerik tek, sade kartta. */
+@Composable
+private fun SettingsCard(title: String, subtitle: String, content: @Composable ColumnScope.() -> Unit) {
+    androidx.compose.material3.Card(Modifier.fillMaxWidth().padding(top = 10.dp)) {
+        Column(Modifier.padding(16.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(
+                subtitle, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.size(10.dp))
+            content()
+        }
     }
 }

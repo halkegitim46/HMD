@@ -1,6 +1,11 @@
 package com.eokul.studio
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,18 +21,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import com.eokul.studio.core.Quality
+import com.eokul.studio.core.Score
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
@@ -37,7 +44,6 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
 
@@ -56,6 +62,7 @@ fun ReviewScreen(studio: StudioViewModel) {
     val cls = studio.classById(cap.classId)
     val student = cls?.students?.firstOrNull { it.no == cap.no }
     val s = cap.session
+    var autoStopped by remember(cap) { mutableStateOf(false) }
     val preview = rememberPreview(s, studio.settings)
     val quality by produceState<Quality.Report?>(null, s, s?.box, s?.loading) {
         val ss = s
@@ -70,24 +77,18 @@ fun ReviewScreen(studio: StudioViewModel) {
         }
     }
 
-    Column(Modifier.fillMaxSize().background(Bg).padding(horizontal = 14.dp, vertical = 10.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(student?.name ?: cap.no, color = Color.White,
-                    style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("${cap.no}  ·  ${cls?.name ?: ""}" + if (cap.fromSaved) "  ·  kayıtlı orijinal" else "",
-                    color = Dim, fontSize = 12.sp)
-            }
-            Surface(color = Color(0xFF202A38), shape = RoundedCornerShape(10.dp)) {
-                Text("ÖNİZLEME", color = Color(0xFFB9C9E0), fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp))
-            }
-        }
-        Spacer(Modifier.size(10.dp))
+    Column(Modifier.fillMaxSize().background(Bg).padding(12.dp)) {
+        Text(
+            student?.name ?: cap.no, color = Color.White,
+            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold
+        )
+        Text(
+            "${cap.no}  ·  ${cls?.name ?: ""}" + if (cap.fromSaved) "  ·  kayıtlı orijinalden" else "",
+            color = Dim, fontSize = 12.sp
+        )
+        Spacer(Modifier.size(8.dp))
 
-        Card(Modifier.weight(1f).fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF191F29)),
-            shape = RoundedCornerShape(18.dp)) {
-            Box(Modifier.fillMaxSize().padding(10.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
             val err = cap.error
             when {
                 err != null -> Text("Fotoğraf işlenemedi: $err", color = Warn)
@@ -105,18 +106,16 @@ fun ReviewScreen(studio: StudioViewModel) {
                             bitmap = pb.asImageBitmap(),
                             contentDescription = "Önizleme",
                             filterQuality = FilterQuality.High,
-                            modifier = Modifier.fillMaxHeight().aspectRatio(TARGET_W.toFloat() / TARGET_H)
+                            modifier = Modifier.fillMaxHeight().aspectRatio(TARGET_W.toFloat() / TARGET_H).clip(RoundedCornerShape(10.dp))
                         )
                     } else {
                         CircularProgressIndicator()
                     }
                 }
             }
-            }
         }
 
         if (s != null && !cap.loading) {
-            HorizontalDivider(color = Color(0xFF303A49), modifier = Modifier.padding(vertical = 6.dp))
             val warnings = ArrayList<String>()
             if (s.faces.isEmpty()) warnings.add("⚠ Yüz bulunamadı — alanı elle ayarlayın veya yeniden çekin.")
             if (s.faces.size > 1) warnings.add("⚠ ${s.faces.size} yüz algılandı — en büyüğü seçildi. Doğruluğunu kontrol edin.")
@@ -148,26 +147,90 @@ fun ReviewScreen(studio: StudioViewModel) {
                 if (Math.abs(f0.yaw) > 15f) warnings.add("⚠ Yüz kameraya dönük değil (${Math.abs(f0.yaw).toInt()}°) — karşıdan çekin.")
             }
             androidx.compose.runtime.LaunchedEffect(warnings.size) { cap.warned = warnings.isNotEmpty() }
-            for (w in warnings) Text(w, color = Warn, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
-            val kb = (preview?.second ?: 0) / 1024.0
-            Text(
-                "Çıktı: ${TARGET_W}×${TARGET_H} px · ${"%.1f".format(kb)} KB · kaynak ${s.iw}×${s.ih}",
-                color = Dim, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)
-            )
+            val f1 = s.faces.firstOrNull()
+            val score = if (q != null && f1 != null) {
+                Score.total(
+                    if (warnings.isEmpty()) 0.0 else 1.5, q.blurRatio,
+                    Math.abs(f1.roll).toDouble(), Math.abs(f1.yaw).toDouble(), q.brightness, q.contrast, -1.0
+                )
+            } else -1
+            val kbNow = (preview?.second ?: 0) / 1024.0
+            Row(Modifier.fillMaxWidth().padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (score >= 0) {
+                    val col = when {
+                        score >= 80 -> Color(0xFF4CC38A)
+                        score >= 60 -> Warn
+                        else -> Color(0xFFE5645F)
+                    }
+                    Row(
+                        Modifier.clip(RoundedCornerShape(50)).background(Color(0xFF1B2232))
+                            .padding(start = 10.dp, end = 14.dp, top = 4.dp, bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(Modifier.size(10.dp).clip(CircleShape).background(col))
+                        Text(
+                            score.toString(), color = col, fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                        Text(
+                            Score.label(score), color = Color.White, fontSize = 12.sp,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                } else {
+                    Text("Kalite hesaplanıyor…", color = Dim, fontSize = 12.sp)
+                }
+                Spacer(Modifier.weight(1f))
+                Text("${TARGET_W}×${TARGET_H} px · ${"%.1f".format(kbNow)} KB", color = Dim, fontSize = 12.sp)
+            }
+            if (warnings.isNotEmpty()) {
+                Column(
+                    Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(max = 112.dp)
+                        .clip(RoundedCornerShape(10.dp)).background(Color(0xFF2A2415))
+                        .verticalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    for (w in warnings) Text(w, color = Warn, fontSize = 13.sp, modifier = Modifier.padding(vertical = 1.dp))
+                }
+            }
+            val autoPending = studio.settings.autoAccept && !cap.fromSaved && !autoStopped &&
+                cap.error == null && !cap.saving && score >= studio.settings.autoAcceptScore && warnings.isEmpty()
+            LaunchedEffect(autoPending) {
+                if (autoPending) {
+                    delay(1200)
+                    studio.saveCapture()
+                }
+            }
+            if (autoPending) {
+                Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "✓ İyi çekim — otomatik kaydediliyor…", color = Color(0xFF9ECE6A),
+                        fontSize = 13.sp, modifier = Modifier.weight(1f)
+                    )
+                    OutlinedButton(onClick = { autoStopped = true }) { Text("Durdur") }
+                }
+            }
         }
 
         Spacer(Modifier.size(8.dp))
         val pad = PaddingValues(horizontal = 4.dp)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { studio.discardCapture() }, modifier = Modifier.weight(1f).heightIn(min = 50.dp),
-                enabled = !cap.saving, contentPadding = pad) {
-                Text(if (cap.fromSaved) "İptal" else "↻ Tekrar çek", fontSize = 13.sp)
-            }
-            OutlinedButton(onClick = { studio.openCaptureEditor() }, modifier = Modifier.weight(0.9f).heightIn(min = 50.dp),
-                enabled = s != null && !cap.loading && !cap.saving, contentPadding = pad) { Text("✎ Düzenle", fontSize = 13.sp) }
-            Button(onClick = { studio.saveCapture() }, modifier = Modifier.weight(1.15f).heightIn(min = 50.dp),
-                enabled = s != null && !cap.loading && !cap.saving, contentPadding = pad) {
-                Text(if (cap.saving) "Kaydediliyor…" else "✓ Onayla", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            OutlinedButton(
+                onClick = { studio.discardCapture() }, modifier = Modifier.weight(1f).heightIn(min = 56.dp),
+                enabled = !cap.saving, contentPadding = pad,
+                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE5645F))
+            ) { Text(if (cap.fromSaved) "İptal" else "Yeniden çek", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) }
+            androidx.compose.material3.TextButton(
+                onClick = { studio.openCaptureEditor() }, modifier = Modifier.heightIn(min = 56.dp),
+                enabled = s != null && !cap.loading && !cap.saving, contentPadding = pad
+            ) { Text("Düzenle", fontSize = 14.sp) }
+            Button(
+                onClick = { studio.saveCapture() }, modifier = Modifier.weight(1.5f).heightIn(min = 56.dp),
+                enabled = s != null && !cap.loading && !cap.saving, contentPadding = pad
+            ) {
+                Text(
+                    if (cap.saving) "Kaydediliyor…" else if (cap.warned) "Yine de kaydet" else "Kaydet",
+                    fontSize = 16.sp, fontWeight = FontWeight.Bold
+                )
             }
         }
     }

@@ -4,6 +4,11 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -311,68 +316,101 @@ private fun StudentRow(
     var menu by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
     val thumb by produceState<Bitmap?>(null, cls.id, s.no, s.updatedAt, s.captured) {
-        value = if (!s.captured) null else withContext(Dispatchers.IO) {
-            try { BitmapFactory.decodeFile(Naming.privatePhoto(ctx, cls.id, s.no).absolutePath) }
-            catch (_: Exception) { null }
+        value = if (!s.captured) {
+            null
+        } else {
+            withContext(Dispatchers.IO) {
+                try {
+                    BitmapFactory.decodeFile(Naming.privatePhoto(ctx, cls.id, s.no).absolutePath)
+                } catch (e: Exception) {
+                    null
+                }
+            }
         }
     }
-    val statusColor = when {
-        s.retake -> Color(0xFFE39A32)
-        s.captured -> Color(0xFF27966B)
+    val okColor = Color(0xFF3C9A5F)
+    val warnColor = Color(0xFFE08A00)
+    val stateColor = when {
+        s.retake -> warnColor
+        s.captured -> okColor
         else -> MaterialTheme.colorScheme.outline
     }
     Row(
-        Modifier.fillMaxWidth().clickable { onClick() }.padding(horizontal = 12.dp, vertical = 3.dp),
+        Modifier.fillMaxWidth().clickable { onClick() }.padding(start = 12.dp, top = 3.dp, bottom = 3.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            Modifier.size(width = 39.dp, height = 50.dp).clip(RoundedCornerShape(7.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
-        ) {
-            val t = thumb
-            if (t != null) Image(
-                bitmap = t.asImageBitmap(), contentDescription = "${s.name} fotoğrafı",
-                contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()
-            ) else Text(if (s.captured) "…" else "—", color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelLarge)
-        }
-        Column(Modifier.weight(1f).padding(start = 10.dp, end = 6.dp), verticalArrangement = Arrangement.Center) {
-            Text(s.name, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(s.no, style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.size(7.dp))
-                Box(Modifier.size(7.dp).clip(RoundedCornerShape(50)).background(statusColor))
-                Spacer(Modifier.size(4.dp))
-                Text(
-                    when { s.retake -> "Tekrar çekilecek"; s.captured -> "Fotoğraf hazır"; else -> "Fotoğraf bekliyor" },
-                    style = MaterialTheme.typography.labelSmall, color = statusColor,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis
-                )
+        Box(Modifier.height(46.dp).aspectRatio(TARGET_W.toFloat() / TARGET_H)) {
+            Box(
+                Modifier.fillMaxSize().clip(RoundedCornerShape(6.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(1.5.dp, stateColor.copy(alpha = if (s.captured) 1f else 0.35f), RoundedCornerShape(6.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                val t = thumb
+                if (t != null) {
+                    Image(
+                        bitmap = t.asImageBitmap(), contentDescription = null,
+                        contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Text(if (s.captured) "…" else "—", color = MaterialTheme.colorScheme.outline)
+                }
+            }
+            if (s.captured) {
+                // Küçük durum rozeti: yeşil onay / turuncu tekrar
+                Box(
+                    Modifier.align(Alignment.BottomEnd).size(16.dp).clip(CircleShape).background(stateColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        if (s.retake) androidx.compose.material.icons.Icons.Filled.Refresh else androidx.compose.material.icons.Icons.Filled.Check,
+                        contentDescription = if (s.retake) "Tekrar çekilmeli" else "Çekildi",
+                        tint = Color.White, modifier = Modifier.size(11.dp)
+                    )
+                }
             }
         }
-        if (!s.captured || s.retake) {
-            TextButton(onClick = onCamera, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)) {
-                Text(if (s.retake) "Tekrar" else "Çek", style = MaterialTheme.typography.labelLarge)
+        Column(Modifier.weight(1f).padding(start = 12.dp)) {
+            Text(
+                s.name, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodyLarge
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(s.no, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "  ·  " + if (s.retake) "tekrar çekilmeli" else if (s.captured) "çekildi" else "bekliyor",
+                    style = MaterialTheme.typography.bodySmall, color = stateColor
+                )
             }
         }
         Box {
             MoreBtn(onClick = { menu = true })
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                DropdownMenuItem(text = { Text(if (s.captured) "Yeniden çek" else "Fotoğraf çek") }, onClick = { menu = false; onCamera() })
-                DropdownMenuItem(text = { Text("Ad soyadı düzenle") }, onClick = { menu = false; onRename() })
+                DropdownMenuItem(text = { Text(if (s.captured) "Yeniden çek" else "Fotoğraf çek") }, onClick = {
+                    menu = false
+                    onCamera()
+                })
+                DropdownMenuItem(text = { Text("Ad soyadı düzenle") }, onClick = {
+                    menu = false
+                    onRename()
+                })
                 if (s.captured) {
-                    DropdownMenuItem(text = { Text(if (s.retake) "Tekrar işaretini kaldır" else "Tekrar çekime işaretle") }, onClick = { menu = false; onToggleRetake() })
-                    DropdownMenuItem(text = { Text("Fotoğrafı sil") }, onClick = { menu = false; onClear() })
+                    DropdownMenuItem(text = { Text(if (s.retake) "Tekrar işaretini kaldır" else "Tekrar çekime işaretle") }, onClick = {
+                        menu = false
+                        onToggleRetake()
+                    })
+                    DropdownMenuItem(text = { Text("Fotoğrafı sil") }, onClick = {
+                        menu = false
+                        onClear()
+                    })
                 }
-                DropdownMenuItem(text = { Text("Listeden çıkar") }, onClick = { menu = false; onDelete() })
+                DropdownMenuItem(text = { Text("Listeden çıkar") }, onClick = {
+                    menu = false
+                    onDelete()
+                })
             }
         }
     }
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f), thickness = 0.6.dp,
-        modifier = Modifier.padding(start = 61.dp, end = 12.dp))
 }
 
 @Composable
