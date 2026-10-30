@@ -64,4 +64,19 @@ public class SheetReaderTest {
         RosterParser.Result r = RosterParser.parse(text, RosterParser.Delimiter.AUTO, false, RosterParser.CaseMode.TITLE);
         assertEquals(8, r.valid().size());
     }
+
+    @Test
+    public void eokulListSkipsHeaderAndFooter() throws Exception {
+        byte[] data;
+        try (InputStream in = getClass().getResourceAsStream("/ornek_liste.xls")) {
+            data = in.readAllBytes();
+        }
+        String t = SheetReader.readEokulList(data);
+        assertTrue(t != null);
+        String[] lines = t.trim().split("\\n");
+        assertEquals(8, lines.length);
+        assertTrue("Başlık olmamalı", !t.contains("S.No") && !t.toLowerCase().contains("soyad"));
+        assertTrue("Alt toplam olmamalı", !t.contains("Toplam") && !t.contains("Sayısı"));
+        assertTrue(lines[0].matches("\\d+\\t.+"));
+    }
 }

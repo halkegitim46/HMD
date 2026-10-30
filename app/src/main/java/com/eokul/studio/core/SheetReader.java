@@ -23,15 +23,7 @@ public final class SheetReader {
 
     /** Dosya içeriğinden ilk sayfanın metnini üretir; desteklenmeyen biçimde IOException. */
     public static String readText(byte[] data) throws IOException {
-        if (data.length > 50L * 1024 * 1024) throw new IOException("Dosya çok büyük (en fazla 50 MB)");
-        List<String[]> rows;
-        if (data.length > 4 && data[0] == 'P' && data[1] == 'K') {
-            rows = readXlsx(data);
-        } else if (data.length > 8 && (data[0] & 255) == 0xD0 && (data[1] & 255) == 0xCF) {
-            rows = readXls(data);
-        } else {
-            throw new IOException("Excel dosyası değil");
-        }
+        List<String[]> rows = readRows(data);
         StringBuilder sb = new StringBuilder();
         for (String[] r : rows) {
             StringBuilder line = new StringBuilder();
@@ -45,6 +37,63 @@ public final class SheetReader {
             if (any) sb.append(line).append('\n');
         }
         return sb.toString();
+    }
+
+    private static List<String[]> readRows(byte[] data) throws IOException {
+        if (data.length > 50L * 1024 * 1024) throw new IOException("Dosya çok büyük (en fazla 50 MB)");
+        if (data.length > 4 && data[0] == 'P' && data[1] == 'K') return readXlsx(data);
+        if (data.length > 8 && (data[0] & 255) == 0xD0 && (data[1] & 255) == 0xCF) return readXls(data);
+        throw new IOException("Excel dosyası değil");
+    }
+
+    private static String norm(String s) {
+        if (s == null) return "";
+        return s.trim().toLowerCase(java.util.Locale.ROOT).replace('ı', 'i').replace('ğ', 'g').replace('ü', 'u')
+                .replace('ş', 's').replace('ö', 'o').replace('ç', 'c').replace("i\u0307", "i").replaceAll("[^a-z0-9 ]", "").replaceAll("\\s+", " ");
+    }
+
+    /**
+     * e-Okul sınıf listesi biçimi: başlık satırında "Öğrenci No", "Adı", "Soyadı" sütunları aranır; ilk sütun (S.No) sayı
+     * olduğu sürece öğrenci satırı kabul edilir, S.No bittiği yerde (alt toplam satırları) okuma durur.
+     * Çıktı: "numara\tAd Soyad" satırları (başlık yok). Başlık tanınmazsa null döner (genel okuma kullanılır).
+     */
+    public static String readEokulList(byte[] data) throws IOException {
+        List<String[]> rows = readRows(data);
+        int hdr = -1, cNo = -1, cAd = -1, cSoy = -1, cSira = -1;
+        for (int i = 0; i < Math.min(rows.size(), 20) && hdr < 0; i++) {
+            String[] r = rows.get(i);
+            int no = -1, ad = -1, soy = -1, sira = -1;
+            for (int c = 0; c < r.length; c++) {
+                String h = norm(r[c]);
+                if (h.equals("ogrenci no") || h.equals("okul no") || h.equals("ogrenci numarasi")) no = c;
+                else if (h.equals("adi") || h.equals("ad")) ad = c;
+                else if (h.equals("soyadi") || h.equals("soyad")) soy = c;
+                else if (h.equals("s no") || h.equals("sno") || h.equals("sira no") || h.equals("sira")) sira = c;
+            }
+            if (no >= 0 && ad >= 0) {
+                hdr = i; cNo = no; cAd = ad; cSoy = soy; cSira = sira;
+            }
+        }
+        if (hdr < 0) return null;
+        StringBuilder sb = new StringBuilder();
+        for (int i = hdr + 1; i < rows.size(); i++) {
+            String[] r = rows.get(i);
+            if (cSira >= 0) {
+                String sr = cSira < r.length && r[cSira] != null ? r[cSira].trim() : "";
+                if (!sr.matches("\\d+")) break;           // S.No bitti: alt toplam satırları önemsiz
+            }
+            String no = cNo < r.length && r[cNo] != null ? r[cNo].trim() : "";
+            if (!no.matches("\\d+")) {
+                if (cSira < 0) break;
+                continue;
+            }
+            String ad = cAd < r.length && r[cAd] != null ? r[cAd].trim() : "";
+            String soy = cSoy >= 0 && cSoy < r.length && r[cSoy] != null ? r[cSoy].trim() : "";
+            String name = (ad + " " + soy).trim().replaceAll("\\s+", " ");
+            if (name.isEmpty()) continue;
+            sb.append(no).append('\t').append(name).append('\n');
+        }
+        return sb.length() == 0 ? null : sb.toString();
     }
 
     /** .xls uzantılı ama aslında HTML tablo olan dosyalar (bazı sistemlerin "Excel'e aktar" çıktısı). */

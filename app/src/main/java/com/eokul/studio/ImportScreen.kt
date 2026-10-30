@@ -69,7 +69,7 @@ fun ImportScreen(studio: StudioViewModel, classId: String?) {
                     error = "Dosya boş"
                 } else {
                     if (com.eokul.studio.core.SheetReader.looksLikeExcel(bytes)) {
-                        text = com.eokul.studio.core.SheetReader.readText(bytes)
+                        text = com.eokul.studio.core.SheetReader.readEokulList(bytes) ?: com.eokul.studio.core.SheetReader.readText(bytes)
                         if (text.isBlank()) error = "Excel sayfasında liste bulunamadı"
                         else error = null
                     } else {
