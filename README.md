@@ -67,3 +67,10 @@ otomatik çalışır; başarısız olursa APK üretilmez ve `test-raporu` yükle
 - Kayıt klasörüne yazarken önce geçici dosya, sonra yer değiştirme yapılır; eski dosya yeni içerik doğrulanmadan silinmez.
 - Yedek / ZIP akış olarak yazılır; geri yükleme geçici klasöre açar, sınırları ve dosya yollarını doğrular, başarısızlıkta eski veriyi korur.
 - Ana ekran menüsünde "Veri denetimi" kayıtlarla dosyalar arasındaki tutarsızlıkları raporlar.
+
+
+---
+
+## Uygulama bilgisi
+
+**Hazırlayan:** Hacimd&HMD

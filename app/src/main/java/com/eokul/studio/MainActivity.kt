@@ -63,16 +63,29 @@ fun EOkulTheme(content: @Composable () -> Unit) {
     val dark = isSystemInDarkTheme()
     val scheme = if (dark) {
         darkColorScheme(
-            primary = Color(0xFF8AB4F8),
-            onPrimary = Color(0xFF062E6F),
-            primaryContainer = Color(0xFF1F3A63),
-            onPrimaryContainer = Color(0xFFD8E6FF)
+            primary = Color(0xFF9BBEFF),
+            onPrimary = Color(0xFF102F60),
+            primaryContainer = Color(0xFF203D68),
+            onPrimaryContainer = Color(0xFFE0EAFF),
+            secondary = Color(0xFFB6C8E3),
+            tertiary = Color(0xFF78C9C0),
+            background = Color(0xFF10151D),
+            surface = Color(0xFF171E28),
+            surfaceVariant = Color(0xFF242E3B),
+            outlineVariant = Color(0xFF3A4655)
         )
     } else {
         lightColorScheme(
-            primary = Color(0xFF3B6FD4),
-            primaryContainer = Color(0xFFDCE7FF),
-            onPrimaryContainer = Color(0xFF0B2A66)
+            primary = Color(0xFF285AA8),
+            onPrimary = Color.White,
+            primaryContainer = Color(0xFFE3ECFA),
+            onPrimaryContainer = Color(0xFF17365F),
+            secondary = Color(0xFF526B82),
+            tertiary = Color(0xFF087F8C),
+            background = Color(0xFFF5F7FA),
+            surface = Color(0xFFFFFFFF),
+            surfaceVariant = Color(0xFFEDF1F6),
+            outlineVariant = Color(0xFFD8E0EA)
         )
     }
     MaterialTheme(colorScheme = scheme, content = content)

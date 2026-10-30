@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Yalnızca kamera izni: klasör/fotoğraf seçimi sistem seçicisiyle yapılır, kayıt seçilen klasöre yazılır.
-         İnternet izni yoktur; veriler telefondan çıkmaz. -->
+    <!-- Kamera izni kullanılır. Dosya ve klasör erişimi Android sistem seçicisiyle sağlanır.
+         İnternet izni tanımlı değildir; kullanıcı paylaşım özelliğini seçerse dosyalar başka uygulamalara aktarılabilir. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 

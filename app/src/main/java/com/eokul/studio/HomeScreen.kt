@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -58,13 +57,19 @@ fun HomeScreen(studio: StudioViewModel) {
                     Modifier.fillMaxWidth().padding(start = 14.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        "E-Okul Foto Studio",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "E-Okul Foto Studio",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            "Öğrenci fotoğraf yönetimi",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f)
+                        )
+                    }
                     var toolsMenu by remember { mutableStateOf(false) }
                     Box {
                         MoreBtn(onClick = { toolsMenu = true }, tint = MaterialTheme.colorScheme.onPrimaryContainer)
@@ -137,8 +142,7 @@ fun HomeScreen(studio: StudioViewModel) {
                             c,
                             onOpen = { studio.navigate(Screen.ClassDetail(c.id)) },
                             onRename = { renameId = c.id },
-                            onDelete = { deleteId = c.id },
-                            onContinue = { studio.startSerial(c.id) }
+                            onDelete = { deleteId = c.id }
                         )
                     }
                 }
@@ -242,42 +246,39 @@ private fun SummaryCard(studio: StudioViewModel) {
     val done = classes.sumOf { it.capturedCount }
     val missing = total - done
     val retake = classes.sumOf { c -> c.students.count { it.retake } }
-    val last = studio.settings.lastBackupMs
-    val backupText = if (last == 0L) "Yedek: hiç alınmadı"
-    else "Yedek: " + java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale("tr")).format(java.util.Date(last))
-    val stale = done > 0 && (last == 0L || System.currentTimeMillis() - last > 7L * 24 * 3600 * 1000)
     Card(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-            Text(
-                "${classes.size} sınıf · $total öğrenci",
-                style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold
-            )
-            Text(
-                "✅ $done çekildi   ⏳ $missing eksik" + if (retake > 0) "   🔁 $retake tekrar" else "",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                backupText + if (stale) " — yedek almanız önerilir" else "",
-                style = MaterialTheme.typography.bodySmall,
-                color = if (stale) Color(0xFFE08A00) else MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text("${classes.size} sınıf · $total öğrenci", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Text("$done fotoğraf tamamlandı · $missing bekliyor", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (retake > 0) {
+                Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.errorContainer) {
+                    Text("$retake tekrar", modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                }
+            }
         }
     }
 }
 
-private val DoneGreen = Color(0xFF3C9A5F)
-private val WarnOrange = Color(0xFFE08A00)
+private val DoneGreen = Color(0xFF23865B)
+private val WarnOrange = Color(0xFFB66A12)
 
 @Composable
 private fun ClassCard(
     c: SchoolClass,
     onOpen: () -> Unit,
     onRename: () -> Unit,
-    onDelete: () -> Unit,
-    onContinue: () -> Unit
+    onDelete: () -> Unit
 ) {
     var menu by remember { mutableStateOf(false) }
     val total = c.students.size
@@ -285,28 +286,34 @@ private fun ClassCard(
     val missing = total - done
     val retake = c.students.count { it.retake }
     val pct = if (total == 0) 0 else (done * 100f / total).toInt()
-    val last = c.students.maxOfOrNull { it.updatedAt } ?: 0L
-
-    val (statusText, statusColor) = when {
-        total == 0 -> "Liste boş" to MaterialTheme.colorScheme.onSurfaceVariant
-        done == total && retake == 0 -> "Tamamlandı" to DoneGreen
-        done == total -> "Tekrar bekliyor" to WarnOrange
-        done == 0 -> "Başlanmadı" to MaterialTheme.colorScheme.onSurfaceVariant
-        else -> "Devam ediyor" to MaterialTheme.colorScheme.primary
+    val statusColor = when {
+        total > 0 && done == total && retake == 0 -> DoneGreen
+        retake > 0 -> WarnOrange
+        done > 0 -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
-    Card(Modifier.fillMaxWidth().clickable { onOpen() }) {
-        Column(Modifier.padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 8.dp)) {
-            // Başlık satırı: ad · durum · menü
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable { onOpen() },
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(Modifier.padding(start = 14.dp, end = 6.dp, top = 9.dp, bottom = 9.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(c.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(
-                        statusText, style = MaterialTheme.typography.labelMedium,
-                        color = statusColor, fontWeight = FontWeight.SemiBold
-                    )
-                }
-                Text("%$pct", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = statusColor)
+                Text(
+                    c.name,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+                Text(
+                    "$done/$total",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = statusColor
+                )
                 Box {
                     MoreBtn(onClick = { menu = true })
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
@@ -321,40 +328,27 @@ private fun ClassCard(
                     }
                 }
             }
-            Spacer(Modifier.size(6.dp))
             LinearProgressIndicator(
                 progress = { if (total == 0) 0f else done.toFloat() / total },
+                modifier = Modifier.fillMaxWidth().padding(end = 8.dp).padding(top = 3.dp),
                 color = statusColor,
-                modifier = Modifier.fillMaxWidth().padding(end = 12.dp)
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
-            Spacer(Modifier.size(10.dp))
-            // Sayılar: toplam · çekilen · eksik · tekrar
-            Row(Modifier.fillMaxWidth().padding(end = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Stat("Öğrenci", total.toString(), MaterialTheme.colorScheme.onSurface)
-                Stat("Çekilen", done.toString(), DoneGreen)
-                Stat("Eksik", missing.toString(), if (missing > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
-                Stat("Tekrar", retake.toString(), if (retake > 0) WarnOrange else MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Spacer(Modifier.size(4.dp))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    if (last > 0L) "Son çekim: " + java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale("tr")).format(java.util.Date(last)) else "Henüz çekim yok",
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f)
-                )
-                if (missing + retake > 0 && total > 0) {
-                    TextButton(onClick = onContinue) { Text(if (done == 0) "Çekime başla" else "Çekime devam et") }
+            Spacer(Modifier.size(5.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text("$total öğrenci", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("$done çekildi", style = MaterialTheme.typography.labelSmall, color = DoneGreen)
+                Text("$missing bekliyor", style = MaterialTheme.typography.labelSmall,
+                    color = if (missing > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                if (retake > 0) {
+                    Text("· $retake tekrar", style = MaterialTheme.typography.labelSmall, color = WarnOrange)
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun Stat(label: String, value: String, color: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.widthIn(min = 56.dp)) {
-        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color)
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
