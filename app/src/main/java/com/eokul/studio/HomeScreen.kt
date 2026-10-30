@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -136,7 +137,8 @@ fun HomeScreen(studio: StudioViewModel) {
                             c,
                             onOpen = { studio.navigate(Screen.ClassDetail(c.id)) },
                             onRename = { renameId = c.id },
-                            onDelete = { deleteId = c.id }
+                            onDelete = { deleteId = c.id },
+                            onContinue = { studio.startSerial(c.id) }
                         )
                     }
                 }
@@ -266,19 +268,45 @@ private fun SummaryCard(studio: StudioViewModel) {
     }
 }
 
+private val DoneGreen = Color(0xFF3C9A5F)
+private val WarnOrange = Color(0xFFE08A00)
+
 @Composable
-private fun ClassCard(c: SchoolClass, onOpen: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit) {
+private fun ClassCard(
+    c: SchoolClass,
+    onOpen: () -> Unit,
+    onRename: () -> Unit,
+    onDelete: () -> Unit,
+    onContinue: () -> Unit
+) {
     var menu by remember { mutableStateOf(false) }
+    val total = c.students.size
+    val done = c.capturedCount
+    val missing = total - done
+    val retake = c.students.count { it.retake }
+    val pct = if (total == 0) 0 else (done * 100f / total).toInt()
+    val last = c.students.maxOfOrNull { it.updatedAt } ?: 0L
+
+    val (statusText, statusColor) = when {
+        total == 0 -> "Liste boş" to MaterialTheme.colorScheme.onSurfaceVariant
+        done == total && retake == 0 -> "Tamamlandı" to DoneGreen
+        done == total -> "Tekrar bekliyor" to WarnOrange
+        done == 0 -> "Başlanmadı" to MaterialTheme.colorScheme.onSurfaceVariant
+        else -> "Devam ediyor" to MaterialTheme.colorScheme.primary
+    }
+
     Card(Modifier.fillMaxWidth().clickable { onOpen() }) {
-        Column(Modifier.padding(start = 14.dp, end = 4.dp, top = 10.dp, bottom = 12.dp)) {
+        Column(Modifier.padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 8.dp)) {
+            // Başlık satırı: ad · durum · menü
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    c.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                Text("${c.capturedCount}/${c.students.size}", style = MaterialTheme.typography.titleSmall)
+                Column(Modifier.weight(1f)) {
+                    Text(c.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        statusText, style = MaterialTheme.typography.labelMedium,
+                        color = statusColor, fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Text("%$pct", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = statusColor)
                 Box {
                     MoreBtn(onClick = { menu = true })
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
@@ -293,21 +321,40 @@ private fun ClassCard(c: SchoolClass, onOpen: () -> Unit, onRename: () -> Unit, 
                     }
                 }
             }
-            val total = c.students.size
+            Spacer(Modifier.size(6.dp))
             LinearProgressIndicator(
-                progress = { if (total == 0) 0f else c.capturedCount.toFloat() / total },
-                modifier = Modifier.fillMaxWidth().padding(end = 10.dp)
+                progress = { if (total == 0) 0f else done.toFloat() / total },
+                color = statusColor,
+                modifier = Modifier.fillMaxWidth().padding(end = 12.dp)
             )
+            Spacer(Modifier.size(10.dp))
+            // Sayılar: toplam · çekilen · eksik · tekrar
+            Row(Modifier.fillMaxWidth().padding(end = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                Stat("Öğrenci", total.toString(), MaterialTheme.colorScheme.onSurface)
+                Stat("Çekilen", done.toString(), DoneGreen)
+                Stat("Eksik", missing.toString(), if (missing > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                Stat("Tekrar", retake.toString(), if (retake > 0) WarnOrange else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             Spacer(Modifier.size(4.dp))
-            Text(
-                when {
-                    total == 0 -> "Liste boş — öğrenci ekleyin"
-                    c.capturedCount == total -> "✅ Tamamlandı"
-                    else -> "${total - c.capturedCount} öğrenci bekliyor"
-                },
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (last > 0L) "Son çekim: " + java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale("tr")).format(java.util.Date(last)) else "Henüz çekim yok",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                if (missing + retake > 0 && total > 0) {
+                    TextButton(onClick = onContinue) { Text(if (done == 0) "Çekime başla" else "Çekime devam et") }
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun Stat(label: String, value: String, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.widthIn(min = 56.dp)) {
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

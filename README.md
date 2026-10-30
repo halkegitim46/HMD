@@ -47,6 +47,7 @@ günlüğünü (hata satırlarını) yapıştır, düzeltelim.
 ## Faz 3
 - Kamerada anlık yüz tespiti: yeşil/sarı yüz kutusu ve yönlendirme ("Biraz yaklaşın", "Başı dik tutun"…).
 - Otomatik odak/pozlama: yüze sürekli, ayrıca ekrana dokunarak.
+- Akıllı çekim (Ayarlar'dan kapatılabilir): göz açıklığı (ML Kit sınıflandırma), canlı netlik/ışık ölçümü, jiroskopla telefon sabitliği; hazır olunca odak/pozlama yüze kilitlenir, 3 kare çekilip en iyisi seçilir. Göz çizgisinden hassas baş eğikliği. Köşede 100 üzerinden canlı kalite puanı (kadraj 25, netlik 25, açı 20, ışık 20, göz 10).
 - Otomatik çekim (anahtar): yüz kılavuza oturup sabit durunca 1,2 sn geri sayım ve çekim; deklanşör sesi + titreşim.
   Seri çekimde bir önceki öğrenci çerçevedeyken yanlışlıkla çekmemek için yüz çerçeveden çıkıp girince silahlanır.
 - PIN kilidi (Ayarlar → PIN): açılışta ve 30 sn'den uzun arka planda kalınca sorulur.

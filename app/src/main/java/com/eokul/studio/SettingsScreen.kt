@@ -61,6 +61,7 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
     var serial by remember { mutableStateOf(cur.serialMode) }
     var autoTol by remember { mutableStateOf(cur.autoTol.toFloat()) }
     var autoHold by remember { mutableStateOf(cur.autoHoldMs.toFloat()) }
+    var smart by remember { mutableStateOf(cur.smartShot) }
     var keepOrig by remember { mutableStateOf(cur.keepOriginals) }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -86,6 +87,7 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             autoTol = (autoTol * 100.0).roundToInt() / 100.0,
             autoHoldMs = ((autoHold / 100f).roundToInt() * 100).coerceIn(400, 4000),
             keepOriginals = keepOrig,
+            smartShot = smart,
             topGap = (topGap * 100.0).roundToInt() / 100.0,
             headFrac = (headFrac * 100.0).roundToInt() / 100.0,
             jpegQuality = quality.roundToInt(),
@@ -136,6 +138,15 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             autoTol > 1.2f -> "gevşek"
             else -> "normal"
         }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Switch(checked = smart, onCheckedChange = { smart = it })
+            Text("  Akıllı çekim", style = MaterialTheme.typography.bodyMedium)
+        }
+        Text(
+            "Gözler kapalıysa, görüntü net değilse veya telefon sallanıyorsa çekimi bekletir; her çekimde 3 kare alıp en netini seçer (çekim yaklaşık 1 sn sürer).",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.size(8.dp))
         Text("Yüz konumu toleransı: $tolText (${(autoTol * 100).roundToInt()}%)", style = MaterialTheme.typography.bodyMedium)
         Slider(value = autoTol, onValueChange = { autoTol = it }, valueRange = 0.6f..1.6f)
         Text(
