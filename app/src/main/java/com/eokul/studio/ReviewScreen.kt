@@ -16,9 +16,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,6 +37,7 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
 
@@ -65,18 +70,24 @@ fun ReviewScreen(studio: StudioViewModel) {
         }
     }
 
-    Column(Modifier.fillMaxSize().background(Bg).padding(12.dp)) {
-        Text(
-            student?.name ?: cap.no, color = Color.White,
-            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold
-        )
-        Text(
-            "${cap.no}  ·  ${cls?.name ?: ""}" + if (cap.fromSaved) "  ·  kayıtlı orijinalden" else "",
-            color = Dim, fontSize = 12.sp
-        )
-        Spacer(Modifier.size(8.dp))
+    Column(Modifier.fillMaxSize().background(Bg).padding(horizontal = 14.dp, vertical = 10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(student?.name ?: cap.no, color = Color.White,
+                    style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("${cap.no}  ·  ${cls?.name ?: ""}" + if (cap.fromSaved) "  ·  kayıtlı orijinal" else "",
+                    color = Dim, fontSize = 12.sp)
+            }
+            Surface(color = Color(0xFF202A38), shape = RoundedCornerShape(10.dp)) {
+                Text("ÖNİZLEME", color = Color(0xFFB9C9E0), fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp))
+            }
+        }
+        Spacer(Modifier.size(10.dp))
 
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Card(Modifier.weight(1f).fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF191F29)),
+            shape = RoundedCornerShape(18.dp)) {
+            Box(Modifier.fillMaxSize().padding(10.dp), contentAlignment = Alignment.Center) {
             val err = cap.error
             when {
                 err != null -> Text("Fotoğraf işlenemedi: $err", color = Warn)
@@ -101,9 +112,11 @@ fun ReviewScreen(studio: StudioViewModel) {
                     }
                 }
             }
+            }
         }
 
         if (s != null && !cap.loading) {
+            HorizontalDivider(color = Color(0xFF303A49), modifier = Modifier.padding(vertical = 6.dp))
             val warnings = ArrayList<String>()
             if (s.faces.isEmpty()) warnings.add("⚠ Yüz bulunamadı — alanı elle ayarlayın veya yeniden çekin.")
             if (s.faces.size > 1) warnings.add("⚠ ${s.faces.size} yüz algılandı — en büyüğü seçildi. Doğruluğunu kontrol edin.")
@@ -146,18 +159,16 @@ fun ReviewScreen(studio: StudioViewModel) {
         Spacer(Modifier.size(8.dp))
         val pad = PaddingValues(horizontal = 4.dp)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(
-                onClick = { studio.discardCapture() }, modifier = Modifier.weight(1f).heightIn(min = 52.dp),
-                enabled = !cap.saving, contentPadding = pad
-            ) { Text(if (cap.fromSaved) "İptal" else "↺ Yeniden çek", fontSize = 14.sp) }
-            OutlinedButton(
-                onClick = { studio.openCaptureEditor() }, modifier = Modifier.weight(1f).heightIn(min = 52.dp),
-                enabled = s != null && !cap.loading && !cap.saving, contentPadding = pad
-            ) { Text("✂ Düzenle", fontSize = 14.sp) }
-            Button(
-                onClick = { studio.saveCapture() }, modifier = Modifier.weight(1.4f).heightIn(min = 52.dp),
-                enabled = s != null && !cap.loading && !cap.saving, contentPadding = pad
-            ) { Text(if (cap.saving) "Kaydediliyor…" else "✅ Kaydet", fontSize = 15.sp) }
+            OutlinedButton(onClick = { studio.discardCapture() }, modifier = Modifier.weight(1f).heightIn(min = 50.dp),
+                enabled = !cap.saving, contentPadding = pad) {
+                Text(if (cap.fromSaved) "İptal" else "↻ Tekrar çek", fontSize = 13.sp)
+            }
+            OutlinedButton(onClick = { studio.openCaptureEditor() }, modifier = Modifier.weight(0.9f).heightIn(min = 50.dp),
+                enabled = s != null && !cap.loading && !cap.saving, contentPadding = pad) { Text("✎ Düzenle", fontSize = 13.sp) }
+            Button(onClick = { studio.saveCapture() }, modifier = Modifier.weight(1.15f).heightIn(min = 50.dp),
+                enabled = s != null && !cap.loading && !cap.saving, contentPadding = pad) {
+                Text(if (cap.saving) "Kaydediliyor…" else "✓ Onayla", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

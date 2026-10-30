@@ -58,6 +58,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -519,16 +520,28 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
                     }
                     if (score >= 0 && live != null) {
                         Surface(
-                            color = Color.Black.copy(alpha = 0.55f),
-                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xE817202B),
+                            shape = RoundedCornerShape(13.dp),
                             modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp)
                         ) {
-                            Text(
-                                "Kalite $score · ${Score.label(score)}",
-                                color = if (score >= 70) Color(0xFF9ECE6A) else Color(0xFFE0AF68),
-                                fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                            )
+                            Column(Modifier.padding(horizontal = 11.dp, vertical = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("KALİTE", color = Color(0xFFB9C9E0), fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold)
+                                    Text("  $score/100", color = Color.White, fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold)
+                                    Text("  ${Score.label(score)}",
+                                        color = if (score >= 70) Color(0xFF9ECE6A) else Color(0xFFE0AF68),
+                                        fontSize = 10.sp)
+                                }
+                                LinearProgressIndicator(
+                                    progress = { (score / 100f).coerceIn(0f, 1f) },
+                                    modifier = Modifier.fillMaxWidth().size(height = 4.dp, width = 112.dp),
+                                    color = if (score >= 70) Color(0xFF75C99A) else Color(0xFFE0AF68),
+                                    trackColor = Color.White.copy(alpha = 0.18f)
+                                )
+                            }
                         }
                     }
                 }
@@ -563,34 +576,34 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
         }
 
         if (hasPerm) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Switch(
-                    checked = autoOn,
-                    onCheckedChange = { studio.updateSettings(studio.settings.copy(autoCapture = it)) }
-                )
-                Text(
-                    "  Otomatik çekim", color = Color.White, fontSize = 13.sp,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("🔍", color = Color.White)
-                Slider(
-                    value = zoom, onValueChange = { zoom = it }, valueRange = 0f..0.6f,
-                    modifier = Modifier.weight(1f).padding(start = 8.dp)
-                )
+            Surface(color = Color(0xFF151C26), shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp),
+                modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 7.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(checked = autoOn,
+                            onCheckedChange = { studio.updateSettings(studio.settings.copy(autoCapture = it)) })
+                        Column(Modifier.weight(1f).padding(start = 8.dp)) {
+                            Text("Akıllı otomatik çekim", color = Color.White, fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold)
+                            Text(if (autoOn) "Yüz hazır olduğunda otomatik çeker" else "Deklanşöre dokunarak çekin",
+                                color = Color(0xFF9DAABD), fontSize = 10.sp)
+                        }
+                        Text(if (lensBack) "ARKA KAMERA" else "ÖN KAMERA", color = Color(0xFF9DAABD),
+                            fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("−", color = Color.White, fontSize = 16.sp)
+                        Slider(value = zoom, onValueChange = { zoom = it }, valueRange = 0f..0.6f,
+                            modifier = Modifier.weight(1f).padding(horizontal = 8.dp))
+                        Text("+", color = Color.White, fontSize = 16.sp)
+                    }
+                }
             }
         }
 
-        // ---- Alt düğmeler (simgeler)
+        // ---- Alt düğmeler: sade ve eşit aralıklı çekim araçları
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth().background(Color(0xFF151C26)).padding(horizontal = 8.dp, vertical = 9.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {

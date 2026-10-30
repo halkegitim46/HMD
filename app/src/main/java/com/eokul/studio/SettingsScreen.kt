@@ -103,10 +103,20 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             BackBtn(onClick = onClose)
-            Text("Ayarlar", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Column {
+                Text("Ayarlar", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("Çekim, kırpma ve kayıt tercihleri", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
-        Spacer(Modifier.size(8.dp))
+        Spacer(Modifier.size(12.dp))
 
+        androidx.compose.material3.Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
+        ) {
+            Column(Modifier.fillMaxWidth().padding(14.dp)) {
         // ---------------- Kayıt (sınıf akışı)
         Text("📂  Genel", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.size(6.dp))
@@ -130,7 +140,16 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             Text("  Tam çözünürlüklü orijinali sakla", style = MaterialTheme.typography.bodyMedium)
         }
 
+            }
+        }
+
         Spacer(Modifier.size(14.dp))
+        androidx.compose.material3.Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
+        ) {
+            Column(Modifier.fillMaxWidth().padding(14.dp)) {
         Text("📷  Çekim: otomatik çekim", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.size(4.dp))
         val tolText = when {
@@ -161,9 +180,18 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
+            }
+        }
+
         Spacer(Modifier.size(20.dp))
 
         // ---------------- Kırpma
+        androidx.compose.material3.Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
+        ) {
+            Column(Modifier.fillMaxWidth().padding(14.dp)) {
         Text("✂  Fotoğraf: kırpma", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.size(6.dp))
         Text("Saç üstü boşluk: %${(topGap * 100).roundToInt()}", style = MaterialTheme.typography.bodyMedium)
@@ -187,9 +215,18 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             headFrac = def.headFrac.toFloat()
         }) { Text("Kırpma varsayılanları") }
 
+            }
+        }
+
         Spacer(Modifier.size(20.dp))
 
         // ---------------- Çıktı
+        androidx.compose.material3.Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
+        ) {
+            Column(Modifier.fillMaxWidth().padding(14.dp)) {
         Text("💾  Fotoğraf: çıktı ve dışa aktarma", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.size(6.dp))
         Text("JPEG kalitesi: ${quality.roundToInt()}", style = MaterialTheme.typography.bodyMedium)
@@ -232,7 +269,16 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             )
         }
 
+            }
+        }
+
         Spacer(Modifier.size(20.dp))
+        androidx.compose.material3.Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
+        ) {
+            Column(Modifier.fillMaxWidth().padding(14.dp)) {
         Text("🔒  Güvenlik ve yedek", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.size(6.dp))
         OutlinedButton(onClick = { pinOpen = true }) {
@@ -254,6 +300,9 @@ fun SettingsScreen(vm: AppViewModel, studio: StudioViewModel, showRecrop: Boolea
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
+
+            }
+        }
 
         error?.let {
             Spacer(Modifier.size(10.dp))

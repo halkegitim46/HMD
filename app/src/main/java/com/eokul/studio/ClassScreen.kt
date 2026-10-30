@@ -311,73 +311,68 @@ private fun StudentRow(
     var menu by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
     val thumb by produceState<Bitmap?>(null, cls.id, s.no, s.updatedAt, s.captured) {
-        value = if (!s.captured) {
-            null
-        } else {
-            withContext(Dispatchers.IO) {
-                try {
-                    BitmapFactory.decodeFile(Naming.privatePhoto(ctx, cls.id, s.no).absolutePath)
-                } catch (e: Exception) {
-                    null
-                }
-            }
+        value = if (!s.captured) null else withContext(Dispatchers.IO) {
+            try { BitmapFactory.decodeFile(Naming.privatePhoto(ctx, cls.id, s.no).absolutePath) }
+            catch (_: Exception) { null }
         }
     }
+    val statusColor = when {
+        s.retake -> Color(0xFFE39A32)
+        s.captured -> Color(0xFF27966B)
+        else -> MaterialTheme.colorScheme.outline
+    }
     Row(
-        Modifier.fillMaxWidth().clickable { onClick() }.padding(start = 12.dp, top = 6.dp, bottom = 6.dp),
+        Modifier.fillMaxWidth().clickable { onClick() }.padding(horizontal = 12.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            Modifier.height(56.dp).aspectRatio(TARGET_W.toFloat() / TARGET_H)
-                .clip(RoundedCornerShape(6.dp)).background(Color(0x22888888)),
+            Modifier.size(width = 39.dp, height = 50.dp).clip(RoundedCornerShape(7.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
             val t = thumb
-            if (t != null) {
-                Image(
-                    bitmap = t.asImageBitmap(), contentDescription = null,
-                    contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()
+            if (t != null) Image(
+                bitmap = t.asImageBitmap(), contentDescription = "${s.name} fotoğrafı",
+                contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()
+            ) else Text(if (s.captured) "…" else "—", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelLarge)
+        }
+        Column(Modifier.weight(1f).padding(start = 10.dp, end = 6.dp), verticalArrangement = Arrangement.Center) {
+            Text(s.name, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(s.no, style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.size(7.dp))
+                Box(Modifier.size(7.dp).clip(RoundedCornerShape(50)).background(statusColor))
+                Spacer(Modifier.size(4.dp))
+                Text(
+                    when { s.retake -> "Tekrar çekilecek"; s.captured -> "Fotoğraf hazır"; else -> "Fotoğraf bekliyor" },
+                    style = MaterialTheme.typography.labelSmall, color = statusColor,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis
                 )
-            } else {
-                Text(if (s.captured) "…" else "📷")
             }
         }
-        Column(Modifier.weight(1f).padding(start = 12.dp)) {
-            Text(s.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium)
-            Text(
-                s.no + if (s.retake) "  ·  🔁 tekrar çekilmeli" else if (s.captured) "  ·  ✅ çekildi" else "  ·  bekliyor",
-                style = MaterialTheme.typography.bodySmall,
-                color = if (s.retake) Color(0xFFE08A00) else if (s.captured) Color(0xFF3C9A5F) else MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        if (!s.captured || s.retake) {
+            TextButton(onClick = onCamera, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)) {
+                Text(if (s.retake) "Tekrar" else "Çek", style = MaterialTheme.typography.labelLarge)
+            }
         }
         Box {
             MoreBtn(onClick = { menu = true })
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                DropdownMenuItem(text = { Text(if (s.captured) "Yeniden çek" else "Fotoğraf çek") }, onClick = {
-                    menu = false
-                    onCamera()
-                })
-                DropdownMenuItem(text = { Text("Ad soyadı düzenle") }, onClick = {
-                    menu = false
-                    onRename()
-                })
+                DropdownMenuItem(text = { Text(if (s.captured) "Yeniden çek" else "Fotoğraf çek") }, onClick = { menu = false; onCamera() })
+                DropdownMenuItem(text = { Text("Ad soyadı düzenle") }, onClick = { menu = false; onRename() })
                 if (s.captured) {
-                    DropdownMenuItem(text = { Text(if (s.retake) "Tekrar işaretini kaldır" else "Tekrar çekime işaretle") }, onClick = {
-                        menu = false
-                        onToggleRetake()
-                    })
-                    DropdownMenuItem(text = { Text("Fotoğrafı sil") }, onClick = {
-                        menu = false
-                        onClear()
-                    })
+                    DropdownMenuItem(text = { Text(if (s.retake) "Tekrar işaretini kaldır" else "Tekrar çekime işaretle") }, onClick = { menu = false; onToggleRetake() })
+                    DropdownMenuItem(text = { Text("Fotoğrafı sil") }, onClick = { menu = false; onClear() })
                 }
-                DropdownMenuItem(text = { Text("Listeden çıkar") }, onClick = {
-                    menu = false
-                    onDelete()
-                })
+                DropdownMenuItem(text = { Text("Listeden çıkar") }, onClick = { menu = false; onDelete() })
             }
         }
     }
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f), thickness = 0.6.dp,
+        modifier = Modifier.padding(start = 61.dp, end = 12.dp))
 }
 
 @Composable
