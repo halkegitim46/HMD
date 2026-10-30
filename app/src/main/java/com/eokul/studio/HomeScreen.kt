@@ -146,17 +146,15 @@ fun HomeScreen(studio: StudioViewModel) {
                             onDelete = { deleteId = c.id }
                         )
                     }
-                    item {
-                        Text(
-                            "Hazırlayan: Hacimd",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
-                    }
                 }
             }
+            Text(
+                "Hazırlayan: Hacimd",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
         }
         if (studio.classes.isNotEmpty()) {
             ExtendedFloatingActionButton(
