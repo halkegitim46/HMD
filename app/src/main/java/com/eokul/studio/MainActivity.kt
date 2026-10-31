@@ -10,6 +10,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.material3.AlertDialog
@@ -176,16 +178,16 @@ fun AppRoot(vm: AppViewModel, studio: StudioViewModel) {
     }
     // Ana, sınıf ve liste ekleme ekranlarında üst başlık durum çubuğunun arkasına uzanır (kendi içinde boşluk bırakır); diğerlerinde tüm güvenli alan.
     val insets = if ((sc0 is Screen.Home || sc0 is Screen.ClassDetail || sc0 is Screen.Import) && !studio.locked) {
-        androidx.compose.foundation.layout.WindowInsets.safeDrawing.only(
+        WindowInsets.safeDrawing.only(
             androidx.compose.foundation.layout.WindowInsetsSides.Horizontal + androidx.compose.foundation.layout.WindowInsetsSides.Bottom
         )
     } else {
-        androidx.compose.foundation.layout.WindowInsets.safeDrawing
+        WindowInsets.safeDrawing
     }
 
     Surface(modifier = Modifier.fillMaxSize(), color = rootColor) {
         if (studio.locked) {
-            Box(Modifier.fillMaxSize().windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.safeDrawing)) {
+            Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
                 LockScreen(studio)
             }
             return@Surface

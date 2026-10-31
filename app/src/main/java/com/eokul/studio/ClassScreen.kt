@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -88,7 +90,7 @@ fun ClassScreen(studio: StudioViewModel, classId: String) {
         Column(Modifier.fillMaxSize()) {
             Surface(color = MaterialTheme.colorScheme.primaryContainer, tonalElevation = 2.dp) {
                 Column(
-                    Modifier.windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBars)
+                    Modifier.windowInsetsPadding(WindowInsets.statusBars)
                         .fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 8.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {

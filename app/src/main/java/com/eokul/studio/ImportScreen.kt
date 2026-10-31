@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -107,7 +109,7 @@ fun ImportScreen(studio: StudioViewModel, classId: String?) {
     Column(Modifier.fillMaxSize()) {
         Surface(color = MaterialTheme.colorScheme.primaryContainer, tonalElevation = 2.dp) {
             Row(
-                Modifier.windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBars).fillMaxWidth().padding(4.dp),
+                Modifier.windowInsetsPadding(WindowInsets.statusBars).fillMaxWidth().padding(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 BackBtn(onClick = { studio.back() }, tint = MaterialTheme.colorScheme.onPrimaryContainer)
