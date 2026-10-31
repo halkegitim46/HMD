@@ -57,6 +57,8 @@ fun MultiImportScreen(studio: StudioViewModel) {
     var sep by remember { mutableStateOf("") }
     var startLetter by remember { mutableStateOf("A") }
     var titleCase by remember { mutableStateOf(false) }
+    // Dosyada "6. Sınıf A Şubesi" başlığı varsa sınıf adı oradan alınabilir; yoksa elle (düzey + harf).
+    var useTitles by remember { mutableStateOf(false) }
     val overrides = remember { mutableStateMapOf<Int, String>() }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -74,6 +76,14 @@ fun MultiImportScreen(studio: StudioViewModel) {
                     } else {
                         blocks = b
                         overrides.clear()
+                        // Şube başlığı ("6. Sınıf A Şubesi") varsa sınıf düzeyi ve ilk şube oradan alınır.
+                        val t0 = b.indexOfFirst { it.titleGrade != null }
+                        useTitles = t0 >= 0
+                        if (t0 >= 0) {
+                            grade = b[t0].titleGrade ?: grade
+                            val ch = b[t0].titleBranch?.firstOrNull()
+                            if (ch != null && ch in 'A'..'Z' && ch - t0 >= 'A') startLetter = (ch - t0).toString()
+                        }
                         error = null
                         fileName = uri.lastPathSegment?.substringAfterLast('/')
                     }
@@ -86,8 +96,11 @@ fun MultiImportScreen(studio: StudioViewModel) {
 
     fun autoName(i: Int): String {
         val c0 = startLetter.trim().firstOrNull()?.uppercaseChar() ?: 'A'
-        val letter = if (c0 in 'A'..'Z' && c0 + i <= 'Z') (c0 + i).toString() else (i + 1).toString()
-        return grade.trim() + sep + letter
+        val blk = blocks?.getOrNull(i)
+        val fromTitle = if (useTitles) blk?.titleBranch else null
+        val letter = fromTitle ?: if (c0 in 'A'..'Z' && c0 + i <= 'Z') (c0 + i).toString() else (i + 1).toString()
+        val g = if (useTitles) (blk?.titleGrade ?: grade.trim()) else grade.trim()
+        return g + sep + letter
     }
 
     val list = blocks
@@ -144,7 +157,7 @@ fun MultiImportScreen(studio: StudioViewModel) {
                     Text("1 · Dosya", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Text(
                         "e-Okul’dan aldığınız, şubelerin alt alta olduğu Excel dosyası. Her şube S.No’nun yeniden 1’den başlamasından " +
-                            "ve “Öğrenci Sayısı” alt satırından otomatik ayrılır.",
+                            "ve “Öğrenci Sayısı” alt satırından otomatik ayrılır; “6. Sınıf A Şubesi” başlığı varsa sınıf adı oradan alınır.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     OutlinedButton(
@@ -166,6 +179,13 @@ fun MultiImportScreen(studio: StudioViewModel) {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("2 · Sınıf adları", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        if (list.any { it.titleGrade != null }) {
+                            Text("Ad kaynağı", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilterChip(selected = useTitles, onClick = { useTitles = true }, label = { Text("Dosyadaki başlıktan") })
+                                FilterChip(selected = !useTitles, onClick = { useTitles = false }, label = { Text("Elle gir") })
+                            }
+                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedTextField(
                                 value = grade, onValueChange = { grade = it.take(6) },
@@ -188,7 +208,12 @@ fun MultiImportScreen(studio: StudioViewModel) {
                             FilterChip(selected = titleCase, onClick = { titleCase = true }, label = { Text("Ad Soyad (baş harf büyük)") })
                         }
                         Text(
-                            "Şubeler ilk şubeden başlayarak sırayla adlandırılır. Aşağıdan her adı elle değiştirebilirsiniz.",
+                            if (list.any { it.titleGrade != null } && useTitles)
+                                "Başlığı olan şubeler dosyadaki adla, olmayanlar sırayla adlandırılır. Aşağıdan her adı elle değiştirebilirsiniz."
+                            else if (grade.isBlank())
+                                "Sınıf düzeyini yazın (ör. 6); şubeler ilk şubeden başlayarak sırayla A, B, C… adlandırılır. Düzey boş kalırsa adlar yalnızca harf olur."
+                            else
+                                "Şubeler ilk şubeden başlayarak sırayla adlandırılır. Aşağıdan her adı elle değiştirebilirsiniz.",
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -228,7 +253,7 @@ fun MultiImportScreen(studio: StudioViewModel) {
                                 }
                                 if (exists) Text("Bu adla sınıf var: öğrenciler mevcut sınıfa eklenir / güncellenir.", color = WarnAmber, style = MaterialTheme.typography.bodySmall)
                                 if (mm != null) Text("⚠ $mm", color = WarnAmber, style = MaterialTheme.typography.bodySmall)
-                                else if (b.girlsInFooter >= 0 && b.girlsCounted >= 0) Text("✓ Kız/erkek sayıları dosyadaki toplamla uyuşuyor.", color = OkGreen, style = MaterialTheme.typography.bodySmall)
+                                else if (b.verified()) Text("✓ Öğrenci sayısı dosyadaki toplamla uyuşuyor.", color = OkGreen, style = MaterialTheme.typography.bodySmall)
                                 if (bad > 0) Text("⚠ $bad satır geçersiz olduğu için atlandı.", color = WarnAmber, style = MaterialTheme.typography.bodySmall)
                             }
                         }

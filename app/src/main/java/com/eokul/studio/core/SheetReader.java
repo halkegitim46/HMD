@@ -104,9 +104,19 @@ public final class SheetReader {
         public int girlsInFooter = -1;
         /** Dosyadaki "Erkek Öğrenci Sayısı" değeri; yoksa -1. */
         public int boysInFooter = -1;
+        /** Dosyadaki "Toplam Öğrenci Sayısı" değeri; yoksa -1. */
+        public int totalInFooter = -1;
+        /** Şube başlığından ("6. Sınıf A Şubesi") okunan düzey ve şube; yoksa null. */
+        public String titleGrade = null;
+        public String titleBranch = null;
         /** Cinsiyet sütunundan sayılan kız / erkek sayısı; sütun yoksa -1. */
         public int girlsCounted = -1;
         public int boysCounted = -1;
+        /** Alt satırla doğrulanabildi ve çelişki yok mu? */
+        public boolean verified() {
+            return mismatch() == null && (totalInFooter >= 0 || girlsInFooter >= 0 || boysInFooter >= 0);
+        }
+
         /** Blok, "Öğrenci Sayısı" alt satırıyla kapatıldı mı? */
         public boolean closedByFooter = false;
         /** İlk öğrenci satırının dosyadaki sırası (1 tabanlı, bilgi için). */
@@ -114,6 +124,8 @@ public final class SheetReader {
 
         /** Alt satırdaki sayılarla sütundan sayılanlar çelişiyorsa açıklama, yoksa null. */
         public String mismatch() {
+            if (totalInFooter >= 0 && totalInFooter != students.size())
+                return "Öğrenci sayısı uyuşmuyor (listede " + students.size() + ", dosyada " + totalInFooter + ")";
             if (girlsInFooter >= 0 && girlsCounted >= 0 && girlsInFooter != girlsCounted)
                 return "Kız sayısı uyuşmuyor (listede " + girlsCounted + ", dosyada " + girlsInFooter + ")";
             if (boysInFooter >= 0 && boysCounted >= 0 && boysInFooter != boysCounted)
@@ -133,6 +145,7 @@ public final class SheetReader {
         int cNo = -1, cAd = -1, cSoy = -1, cSira = -1, cCins = -1;
         List<Block> out = new ArrayList<>();
         Block cur = null;
+        String pendTitleGrade = null, pendTitleBranch = null;
         for (int i = 0; i < rows.size(); i++) {
             String[] r = rows.get(i);
             // Başlık satırı (her şubede tekrarlanabilir)
@@ -147,6 +160,15 @@ public final class SheetReader {
             }
             if (no >= 0 && ad >= 0) {
                 cNo = no; cAd = ad; cSoy = soy; cSira = sira; cCins = cins;
+                continue;
+            }
+            // Şube başlığı: "6. Sınıf A Şubesi" (her şubede olmayabilir)
+            StringBuilder tb = new StringBuilder();
+            for (String cell : r) if (cell != null) tb.append(cell).append(' ');
+            Matcher tm = TITLE.matcher(norm(tb.toString()));
+            if (tm.find()) {
+                pendTitleGrade = tm.group(1);
+                pendTitleBranch = tm.group(2).toUpperCase(java.util.Locale.ROOT);
                 continue;
             }
             if (cNo < 0) continue;
@@ -164,6 +186,10 @@ public final class SheetReader {
                 if (cur == null || cur.closedByFooter || restart) {
                     cur = new Block();
                     cur.firstRow = i + 1;
+                    cur.titleGrade = pendTitleGrade;
+                    cur.titleBranch = pendTitleBranch;
+                    pendTitleGrade = null;
+                    pendTitleBranch = null;
                     out.add(cur);
                 }
                 cur.students.add(new String[]{noCell, name});
@@ -181,15 +207,27 @@ public final class SheetReader {
                 for (String cell : r) if (cell != null) sb.append(cell).append(' ');
                 String t = norm(sb.toString());
                 if (t.contains("ogrenci sayisi")) {
-                    java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d+)\\s*$").matcher(t.trim());
-                    int n = m.find() ? Integer.parseInt(m.group(1).length() > 6 ? "0" : m.group(1)) : -1;
-                    if (t.contains("kiz")) cur.girlsInFooter = n;
-                    else if (t.contains("erkek")) cur.boysInFooter = n;
+                    int k = footerValue(t, "kiz ogrenci sayisi");
+                    int e = footerValue(t, "erkek ogrenci sayisi");
+                    int tot = footerValue(t, "toplam ogrenci sayisi");
+                    if (k >= 0) cur.girlsInFooter = k;
+                    if (e >= 0) cur.boysInFooter = e;
+                    if (tot >= 0) cur.totalInFooter = tot;
                     cur.closedByFooter = true;
                 }
             }
         }
         return out.isEmpty() ? null : out;
+    }
+
+    private static final Pattern TITLE = Pattern.compile("(\\d{1,2}) sinif ([a-z0-9]{1,3}) subesi");
+
+    /** Normalleştirilmiş alt satır metninde "etiket  sayı" çiftinin sayısı; yoksa -1. */
+    private static int footerValue(String t, String label) {
+        int i = t.indexOf(label);
+        if (i < 0) return -1;
+        Matcher m = Pattern.compile("^\\s*(\\d{1,6})").matcher(t.substring(i + label.length()));
+        return m.find() ? Integer.parseInt(m.group(1)) : -1;
     }
 
     /** .xls uzantılı ama aslında HTML tablo olan dosyalar (bazı sistemlerin "Excel'e aktar" çıktısı). */
