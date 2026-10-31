@@ -96,6 +96,102 @@ public final class SheetReader {
         return sb.length() == 0 ? null : sb.toString();
     }
 
+    /** Çok şubeli e-Okul dosyasındaki tek bir sınıf/şube bloğu. */
+    public static final class Block {
+        /** Satırlar: {numara, ad soyad}. */
+        public final List<String[]> students = new ArrayList<>();
+        /** Dosyadaki "Kız Öğrenci Sayısı" değeri; yoksa -1. */
+        public int girlsInFooter = -1;
+        /** Dosyadaki "Erkek Öğrenci Sayısı" değeri; yoksa -1. */
+        public int boysInFooter = -1;
+        /** Cinsiyet sütunundan sayılan kız / erkek sayısı; sütun yoksa -1. */
+        public int girlsCounted = -1;
+        public int boysCounted = -1;
+        /** Blok, "Öğrenci Sayısı" alt satırıyla kapatıldı mı? */
+        public boolean closedByFooter = false;
+        /** İlk öğrenci satırının dosyadaki sırası (1 tabanlı, bilgi için). */
+        public int firstRow = 0;
+
+        /** Alt satırdaki sayılarla sütundan sayılanlar çelişiyorsa açıklama, yoksa null. */
+        public String mismatch() {
+            if (girlsInFooter >= 0 && girlsCounted >= 0 && girlsInFooter != girlsCounted)
+                return "Kız sayısı uyuşmuyor (listede " + girlsCounted + ", dosyada " + girlsInFooter + ")";
+            if (boysInFooter >= 0 && boysCounted >= 0 && boysInFooter != boysCounted)
+                return "Erkek sayısı uyuşmuyor (listede " + boysCounted + ", dosyada " + boysInFooter + ")";
+            return null;
+        }
+    }
+
+    /**
+     * Birden çok şubenin alt alta yer aldığı e-Okul dosyasını şubelere ayırır. Yeni şube şu durumlarda başlar:
+     * (1) S.No yeniden 1'e dönerse, (2) önceki blok "... Öğrenci Sayısı" alt satırıyla kapandıktan sonra yeni öğrenci gelirse.
+     * Her blokta alt satırdaki kız/erkek sayısı, Cinsiyeti sütunundan sayılanla karşılaştırılır (bilgi amaçlı).
+     * Başlık tanınmazsa veya hiç öğrenci yoksa null döner.
+     */
+    public static List<Block> readEokulBlocks(byte[] data) throws IOException {
+        List<String[]> rows = readRows(data);
+        int cNo = -1, cAd = -1, cSoy = -1, cSira = -1, cCins = -1;
+        List<Block> out = new ArrayList<>();
+        Block cur = null;
+        for (int i = 0; i < rows.size(); i++) {
+            String[] r = rows.get(i);
+            // Başlık satırı (her şubede tekrarlanabilir)
+            int no = -1, ad = -1, soy = -1, sira = -1, cins = -1;
+            for (int c = 0; c < r.length; c++) {
+                String h = norm(r[c]);
+                if (h.equals("ogrenci no") || h.equals("okul no") || h.equals("ogrenci numarasi")) no = c;
+                else if (h.equals("adi") || h.equals("ad")) ad = c;
+                else if (h.equals("soyadi") || h.equals("soyad")) soy = c;
+                else if (h.equals("s no") || h.equals("sno") || h.equals("sira no") || h.equals("sira")) sira = c;
+                else if (h.equals("cinsiyeti") || h.equals("cinsiyet")) cins = c;
+            }
+            if (no >= 0 && ad >= 0) {
+                cNo = no; cAd = ad; cSoy = soy; cSira = sira; cCins = cins;
+                continue;
+            }
+            if (cNo < 0) continue;
+
+            String sr = cSira >= 0 && cSira < r.length && r[cSira] != null ? r[cSira].trim() : "";
+            boolean numbered = cSira < 0 ? true : sr.matches("\\d+");
+            String noCell = cNo < r.length && r[cNo] != null ? r[cNo].trim() : "";
+            if (numbered && noCell.matches("\\d+")) {
+                String adS = cAd < r.length && r[cAd] != null ? r[cAd].trim() : "";
+                String soyS = cSoy >= 0 && cSoy < r.length && r[cSoy] != null ? r[cSoy].trim() : "";
+                String name = (adS + " " + soyS).trim().replaceAll("\\s+", " ");
+                if (name.isEmpty()) continue;
+                boolean restart = cSira >= 0 && sr.matches("\\d+") && Integer.parseInt(sr.length() > 9 ? "9" : sr) == 1
+                        && cur != null && !cur.students.isEmpty();
+                if (cur == null || cur.closedByFooter || restart) {
+                    cur = new Block();
+                    cur.firstRow = i + 1;
+                    out.add(cur);
+                }
+                cur.students.add(new String[]{noCell, name});
+                if (cCins >= 0 && cCins < r.length && r[cCins] != null) {
+                    String g = norm(r[cCins]);
+                    if (g.startsWith("k")) cur.girlsCounted = Math.max(0, cur.girlsCounted) + 1;
+                    else if (g.startsWith("e")) cur.boysCounted = Math.max(0, cur.boysCounted) + 1;
+                    // sayaçlardan biri -1 kalmasın: ilk öğrencide ikisini de başlat
+                    if (cur.girlsCounted < 0) cur.girlsCounted = 0;
+                    if (cur.boysCounted < 0) cur.boysCounted = 0;
+                }
+            } else if (cur != null) {
+                // Alt toplam satırı: "Kız Öğrenci Sayısı : 14" gibi
+                StringBuilder sb = new StringBuilder();
+                for (String cell : r) if (cell != null) sb.append(cell).append(' ');
+                String t = norm(sb.toString());
+                if (t.contains("ogrenci sayisi")) {
+                    java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d+)\\s*$").matcher(t.trim());
+                    int n = m.find() ? Integer.parseInt(m.group(1).length() > 6 ? "0" : m.group(1)) : -1;
+                    if (t.contains("kiz")) cur.girlsInFooter = n;
+                    else if (t.contains("erkek")) cur.boysInFooter = n;
+                    cur.closedByFooter = true;
+                }
+            }
+        }
+        return out.isEmpty() ? null : out;
+    }
+
     /** .xls uzantılı ama aslında HTML tablo olan dosyalar (bazı sistemlerin "Excel'e aktar" çıktısı). */
     public static boolean looksLikeHtml(String t) {
         String h = t.length() > 600 ? t.substring(0, 600) : t;

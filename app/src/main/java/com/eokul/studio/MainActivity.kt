@@ -177,7 +177,7 @@ fun AppRoot(vm: AppViewModel, studio: StudioViewModel) {
         }
     }
     // Ana, sınıf ve liste ekleme ekranlarında üst başlık durum çubuğunun arkasına uzanır (kendi içinde boşluk bırakır); diğerlerinde tüm güvenli alan.
-    val insets = if ((sc0 is Screen.Home || sc0 is Screen.ClassDetail || sc0 is Screen.Import) && !studio.locked) {
+    val insets = if ((sc0 is Screen.Home || sc0 is Screen.ClassDetail || sc0 is Screen.Import || sc0 is Screen.MultiImport) && !studio.locked) {
         WindowInsets.safeDrawing.only(
             androidx.compose.foundation.layout.WindowInsetsSides.Horizontal + androidx.compose.foundation.layout.WindowInsetsSides.Bottom
         )
@@ -197,6 +197,7 @@ fun AppRoot(vm: AppViewModel, studio: StudioViewModel) {
                 is Screen.Home -> HomeScreen(studio)
                 is Screen.ClassDetail -> ClassScreen(studio, sc.classId)
                 is Screen.Import -> ImportScreen(studio, sc.classId)
+                is Screen.MultiImport -> MultiImportScreen(studio)
                 is Screen.Sheet -> SheetScreen(studio, sc.classId)
                 is Screen.Camera -> CameraScreen(studio, sc.classId, sc.no)
                 is Screen.Review -> ReviewScreen(studio)

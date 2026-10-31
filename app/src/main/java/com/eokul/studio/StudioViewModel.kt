@@ -28,6 +28,7 @@ sealed interface Screen {
     data object Home : Screen
     data class ClassDetail(val classId: String) : Screen
     data class Import(val classId: String?) : Screen
+    data object MultiImport : Screen
     data class Sheet(val classId: String) : Screen
     data class Camera(val classId: String, val no: String) : Screen
     data object Review : Screen
@@ -343,6 +344,40 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
         val msg = if (parts.isEmpty()) "Değişiklik yok" else parts.joinToString(", ")
         say("✓ $msg")
         return id
+    }
+
+    /** Hazırlanmış şubeleri toplu ekler: aynı adlı sınıf varsa öğrencileri güncellenir, yoksa yeni sınıf açılır. */
+    class BranchPlan(val name: String, val rows: List<RosterParser.Row>)
+
+    fun importBranches(plans: List<BranchPlan>): String {
+        var created = 0
+        var merged = 0
+        var students = 0
+        for (p in plans) {
+            if (p.rows.isEmpty()) continue
+            val n = RosterParser.normalizeSpaces(p.name)
+            if (n.isEmpty()) continue
+            val existing = classes.firstOrNull { folderKey(it.name) == folderKey(n) }
+            if (existing != null) {
+                val cls = classById(existing.id) ?: continue
+                val r = mergeStudents(cls.students, p.rows, MergeMode.UPSERT)
+                updateClass(existing.id) { it.copy(students = r.students) }
+                merged++
+            } else {
+                val id = addClass(n) ?: continue
+                val cls = classById(id) ?: continue
+                val r = mergeStudents(cls.students, p.rows, MergeMode.ADD)
+                updateClass(id) { it.copy(students = r.students) }
+                created++
+            }
+            students += p.rows.size
+        }
+        val parts = ArrayList<String>()
+        if (created > 0) parts.add("$created sınıf eklendi")
+        if (merged > 0) parts.add("$merged sınıf güncellendi")
+        val msg = if (parts.isEmpty()) "Değişiklik yok" else parts.joinToString(", ") + " · $students öğrenci"
+        say("✓ $msg")
+        return msg
     }
 
     fun addStudent(classId: String, no: String, name: String): String? {

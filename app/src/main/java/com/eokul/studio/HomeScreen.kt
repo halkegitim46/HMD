@@ -79,6 +79,10 @@ fun HomeScreen(studio: StudioViewModel) {
                     Box {
                         MoreBtn(onClick = { toolsMenu = true }, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                         DropdownMenu(expanded = toolsMenu, onDismissRequest = { toolsMenu = false }) {
+                            DropdownMenuItem(text = { Text("📋 Çoklu sınıf listesi (Excel)") }, onClick = {
+                                toolsMenu = false
+                                studio.navigate(Screen.MultiImport)
+                            })
                             DropdownMenuItem(text = { Text("📦 Tüm sınıflar tek ZIP (e-Okul)") }, enabled = studio.classes.isNotEmpty(), onClick = {
                                 toolsMenu = false
                                 studio.exportAllEokulZip()

@@ -79,4 +79,35 @@ public class SheetReaderTest {
         assertTrue("Alt toplam olmamalı", !t.contains("Toplam") && !t.contains("Sayısı"));
         assertTrue(lines[0].matches("\\d+\\t.+"));
     }
+
+    private static byte[] res(String n) throws Exception {
+        try (InputStream in = SheetReaderTest.class.getResourceAsStream(n)) {
+            return in.readAllBytes();
+        }
+    }
+
+    @Test
+    public void multiBranchFileSplitsByFooterAndRestart() throws Exception {
+        java.util.List<SheetReader.Block> b = SheetReader.readEokulBlocks(res("/cok_sube.xlsx"));
+        assertEquals(3, b.size());
+        assertEquals(5, b.get(0).students.size());
+        assertEquals("101", b.get(0).students.get(0)[0]);
+        assertEquals(4, b.get(1).students.size());
+        assertEquals(null, b.get(0).mismatch());
+        assertTrue(b.get(2).mismatch() != null);   // alt satır 4 kız diyor, listede 3
+    }
+
+    @Test
+    public void multiBranchSplitsOnSerialRestartWithoutFooter() throws Exception {
+        java.util.List<SheetReader.Block> b = SheetReader.readEokulBlocks(res("/sadece_sira.xlsx"));
+        assertEquals(2, b.size());
+        assertEquals(3, b.get(0).students.size());
+        assertEquals(2, b.get(1).students.size());
+    }
+
+    @Test
+    public void singleClassFileIsOneBlock() throws Exception {
+        java.util.List<SheetReader.Block> b = SheetReader.readEokulBlocks(res("/ornek_liste.xls"));
+        assertEquals(1, b.size());
+    }
 }
