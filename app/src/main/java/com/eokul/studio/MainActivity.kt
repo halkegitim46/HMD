@@ -4,11 +4,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
@@ -32,6 +35,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Kenardan kenara görünüm (Android 15+ / targetSdk 35 için zorunlu); boşluklar AppRoot'ta ayarlanır.
+        enableEdgeToEdge()
         setContent {
             // PIN açıkken son uygulamalar ekranında ve ekran görüntülerinde öğrenci bilgileri görünmesin.
             val secure = studio.settings.pinHash != null
@@ -147,12 +152,45 @@ fun AppRoot(vm: AppViewModel, studio: StudioViewModel) {
     // BackHandler'larını (daha derinde oldukları için öncelikli) kullanır.
     BackHandler(enabled = studio.stack.size > 1) { studio.handleBack() }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    // Koyu zeminli ekranlar (kamera, inceleme, düzenleyici) sistem çubuklarının arkasında da koyu kalır.
+    val sc0 = studio.screen
+    val darkScreen = !studio.locked && (
+        sc0 is Screen.Camera || sc0 is Screen.Review || sc0 is Screen.CaptureEditor ||
+            (sc0 is Screen.Batch && vm.route == Route.Editor)
+        )
+    val rootColor = when {
+        sc0 is Screen.Camera -> Color.Black
+        darkScreen -> Color(0xFF101014)
+        else -> MaterialTheme.colorScheme.background
+    }
+    val sysDark = isSystemInDarkTheme()
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.SideEffect {
+        val w = (view.context as? android.app.Activity)?.window
+        if (w != null) {
+            val c = androidx.core.view.WindowCompat.getInsetsController(w, view)
+            val lightBars = !darkScreen && !sysDark
+            c.isAppearanceLightStatusBars = lightBars
+            c.isAppearanceLightNavigationBars = lightBars
+        }
+    }
+    // Ana, sınıf ve liste ekleme ekranlarında üst başlık durum çubuğunun arkasına uzanır (kendi içinde boşluk bırakır); diğerlerinde tüm güvenli alan.
+    val insets = if ((sc0 is Screen.Home || sc0 is Screen.ClassDetail || sc0 is Screen.Import) && !studio.locked) {
+        androidx.compose.foundation.layout.WindowInsets.safeDrawing.only(
+            androidx.compose.foundation.layout.WindowInsetsSides.Horizontal + androidx.compose.foundation.layout.WindowInsetsSides.Bottom
+        )
+    } else {
+        androidx.compose.foundation.layout.WindowInsets.safeDrawing
+    }
+
+    Surface(modifier = Modifier.fillMaxSize(), color = rootColor) {
         if (studio.locked) {
-            LockScreen(studio)
+            Box(Modifier.fillMaxSize().windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.safeDrawing)) {
+                LockScreen(studio)
+            }
             return@Surface
         }
-        Box(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize().windowInsetsPadding(insets)) {
             when (val sc = studio.screen) {
                 is Screen.Home -> HomeScreen(studio)
                 is Screen.ClassDetail -> ClassScreen(studio, sc.classId)
