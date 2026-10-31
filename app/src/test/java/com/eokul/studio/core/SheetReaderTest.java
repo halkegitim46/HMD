@@ -116,8 +116,8 @@ public class SheetReaderTest {
         java.util.List<SheetReader.Block> b = SheetReader.readEokulBlocks(res("/cok_sube_gercek.xlsx"));
         assertEquals(3, b.size());
         assertEquals(4, b.get(0).students.size());
-        assertEquals("166", b.get(0).students.get(0)[0]);
-        assertEquals("ONURALP BÜYÜKKOZ", b.get(0).students.get(0)[1]);
+        assertEquals("2001", b.get(0).students.get(0)[0]);
+        assertEquals("ÖRNEK1 ÖĞRENCİ", b.get(0).students.get(0)[1]);
         assertEquals("6", b.get(0).titleGrade);
         assertEquals("A", b.get(0).titleBranch);
         assertEquals(3, b.get(0).girlsInFooter);
@@ -125,8 +125,8 @@ public class SheetReaderTest {
         assertEquals(4, b.get(0).totalInFooter);
         assertTrue(b.get(0).verified());
         assertEquals(8, b.get(1).students.size());
-        assertEquals(25, b.get(1).totalInFooter);   // örnek dosya kısaltılmış: uyuşmazlık uyarısı beklenir
-        assertTrue(b.get(1).mismatch() != null);
+        assertEquals(8, b.get(1).totalInFooter);
+        assertTrue(b.get(1).verified());
         assertEquals(5, b.get(2).students.size());
     }
 

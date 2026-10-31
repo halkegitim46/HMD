@@ -20,7 +20,7 @@ object BurstPick {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeFile(shot.file.absolutePath, bounds)
             var sample = 1
-            while (Math.max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= 900) sample *= 2
+            while (Math.max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= 640) sample *= 2
             bmp = BitmapFactory.decodeFile(
                 shot.file.absolutePath,
                 BitmapFactory.Options().apply { inSampleSize = sample }

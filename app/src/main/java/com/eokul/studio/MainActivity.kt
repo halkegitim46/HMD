@@ -39,6 +39,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // Kenardan kenara görünüm (Android 15+ / targetSdk 35 için zorunlu); boşluklar AppRoot'ta ayarlanır.
         enableEdgeToEdge()
+        Diag.install(this)
+        Diag.report(this)?.let { r ->
+            studio.addStartupNote("Önceki çalışmada sorun kaydedildi (bu metni geliştiriciye iletin):\n" + r)
+        }
         setContent {
             // PIN açıkken son uygulamalar ekranında ve ekran görüntülerinde öğrenci bilgileri görünmesin.
             val secure = studio.settings.pinHash != null
@@ -248,7 +252,7 @@ fun AppRoot(vm: AppViewModel, studio: StudioViewModel) {
     studio.startupNote?.let { note ->
         AlertDialog(
             onDismissRequest = { studio.dismissStartupNote() },
-            title = { Text("Liste kurtarma") },
+            title = { Text("Bilgi") },
             text = { Text(note) },
             confirmButton = { TextButton(onClick = { studio.dismissStartupNote() }) { Text("Tamam") } }
         )

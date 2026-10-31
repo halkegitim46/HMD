@@ -76,6 +76,10 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
     var startupNote by mutableStateOf<String?>(null)
         private set
 
+    fun addStartupNote(msg: String) {
+        startupNote = (startupNote?.let { it + "\n\n" } ?: "") + msg
+    }
+
     fun dismissStartupNote() {
         startupNote = null
     }

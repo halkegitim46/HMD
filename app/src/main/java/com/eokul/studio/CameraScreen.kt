@@ -133,6 +133,7 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
 
     // Anlık yüz tespiti / otomatik çekim durumu
     var live by remember { mutableStateOf<LiveFace?>(null) }
+    val liveRaw = remember { java.util.concurrent.atomic.AtomicReference<LiveFace?>(null) }
     var progress by remember { mutableStateOf(0f) }
     var armed by remember { mutableStateOf(false) }
     var focusMark by remember { mutableStateOf<Offset?>(null) }
@@ -145,7 +146,7 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
     }
     val settingsNow = studio.settings
     val autoOn = settingsNow.autoCapture
-    val sound = remember { MediaActionSound() }
+    val sound = remember { MediaActionSound().also { try { it.load(MediaActionSound.SHUTTER_CLICK) } catch (_: Throwable) { } } }
     val analysisExecutor = remember { Executors.newSingleThreadExecutor() }
     DisposableEffect(Unit) {
         onDispose {
@@ -217,6 +218,8 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
                     val mirror = !lensBack
                     var frameNo = 0
                     analysis.setAnalyzer(analysisExecutor) { proxy ->
+                        // Bu iş parçacığında ML Kit sonucu senkron beklenir: dinleyici/yürütücü yoktur, ekran kapanırken
+                        // reddedilen görev (RejectedExecutionException) çökmesi olmaz; her durumda kare kapatılır.
                         var bmpRef: android.graphics.Bitmap? = null
                         try {
                             val bmp = proxy.toBitmap()
@@ -226,61 +229,61 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
                             val uh = (if (rot % 180 == 0) bmp.height else bmp.width).toFloat()
                             frameNo++
                             val measureNow = frameNo % 3 == 0
-                            LiveFaces.detector.process(InputImage.fromBitmap(bmp, rot))
-                                .addOnSuccessListener(analysisExecutor) { faces ->
-                                    val f = faces.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }
-                                    live = if (f == null) {
-                                        null
-                                    } else {
-                                        val r = f.boundingBox
-                                        var x1 = r.left / uw
-                                        var x2 = r.right / uw
-                                        if (mirror) {
-                                            val t = 1f - x2
-                                            x2 = 1f - x1
-                                            x1 = t
-                                        }
-                                        // Göz çizgisinden hassas yan eğiklik
-                                        var roll = f.headEulerAngleZ
-                                        val le = f.getLandmark(FaceLandmark.LEFT_EYE)?.position
-                                        val re = f.getLandmark(FaceLandmark.RIGHT_EYE)?.position
-                                        if (le != null && re != null && Math.abs(re.x - le.x) > 8f) {
-                                            var ang = Math.toDegrees(Math.atan2((re.y - le.y).toDouble(), (re.x - le.x).toDouble())).toFloat()
-                                            if (ang > 90f) ang -= 180f
-                                            if (ang < -90f) ang += 180f
-                                            roll = ang
-                                        }
-                                        val lo = f.leftEyeOpenProbability
-                                        val ro = f.rightEyeOpenProbability
-                                        val eyeOpen = if (lo != null && ro != null) Math.min(lo, ro) else -1f
-                                        // Netlik / ışık ölçümü (her 3 karede bir; aradaki karelerde son değer korunur)
-                                        val prev = live
-                                        var sharp = prev?.sharp ?: Float.NaN
-                                        var bright = prev?.bright ?: Float.NaN
-                                        var contrast = prev?.contrast ?: Float.NaN
-                                        if (measureNow) {
-                                            val q = measureFace(bmp, rot, r)
-                                            if (q != null) {
-                                                sharp = q.blurRatio.toFloat()
-                                                bright = q.brightness.toFloat()
-                                                contrast = q.contrast.toFloat()
-                                            }
-                                        }
-                                        LiveFace(
-                                            x1, r.top / uh, x2, r.bottom / uh,
-                                            roll, f.headEulerAngleY, System.currentTimeMillis(),
-                                            eyeOpen, sharp, bright, contrast
-                                        )
+                            val faces = com.google.android.gms.tasks.Tasks.await(
+                                LiveFaces.detector.process(InputImage.fromBitmap(bmp, rot)),
+                                2, TimeUnit.SECONDS
+                            )
+                            val f = faces.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }
+                            if (f == null) {
+                                liveRaw.set(null)
+                            } else {
+                                val r = f.boundingBox
+                                var x1 = r.left / uw
+                                var x2 = r.right / uw
+                                if (mirror) {
+                                    val t = 1f - x2
+                                    x2 = 1f - x1
+                                    x1 = t
+                                }
+                                // Göz çizgisinden hassas yan eğiklik
+                                var roll = f.headEulerAngleZ
+                                val le = f.getLandmark(FaceLandmark.LEFT_EYE)?.position
+                                val re = f.getLandmark(FaceLandmark.RIGHT_EYE)?.position
+                                if (le != null && re != null && Math.abs(re.x - le.x) > 8f) {
+                                    var ang = Math.toDegrees(Math.atan2((re.y - le.y).toDouble(), (re.x - le.x).toDouble())).toFloat()
+                                    if (ang > 90f) ang -= 180f
+                                    if (ang < -90f) ang += 180f
+                                    roll = ang
+                                }
+                                val lo = f.leftEyeOpenProbability
+                                val ro = f.rightEyeOpenProbability
+                                val eyeOpen = if (lo != null && ro != null) Math.min(lo, ro) else -1f
+                                // Netlik / ışık ölçümü (her 3 karede bir; aradaki karelerde son değer korunur)
+                                val prev = liveRaw.get()
+                                var sharp = prev?.sharp ?: Float.NaN
+                                var bright = prev?.bright ?: Float.NaN
+                                var contrast = prev?.contrast ?: Float.NaN
+                                if (measureNow) {
+                                    val q = measureFace(bmp, rot, r)
+                                    if (q != null) {
+                                        sharp = q.blurRatio.toFloat()
+                                        bright = q.brightness.toFloat()
+                                        contrast = q.contrast.toFloat()
                                     }
                                 }
-                                .addOnCompleteListener(analysisExecutor) {
-                                    // ML Kit işi bitince (başarı, hata veya iptal) bitmap ve kare serbest bırakılır.
-                                    try { bmpRef?.recycle() } catch (_: Exception) { }
-                                    proxy.close()
-                                }
-                        } catch (e: Exception) {
+                                liveRaw.set(
+                                    LiveFace(
+                                        x1, r.top / uh, x2, r.bottom / uh,
+                                        roll, f.headEulerAngleY, System.currentTimeMillis(),
+                                        eyeOpen, sharp, bright, contrast
+                                    )
+                                )
+                            }
+                        } catch (e: Throwable) {
+                            // tek kare hatası önizlemeyi durdurmaz
+                        } finally {
                             try { bmpRef?.recycle() } catch (_: Exception) { }
-                            proxy.close()
+                            try { proxy.close() } catch (_: Exception) { }
                         }
                     }
                     camError = null
@@ -292,6 +295,7 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
             onDispose {
                 try {
                     analysis.clearAnalyzer()
+                    liveRaw.set(null)
                     live = null
                     if (future.isDone) future.get().unbindAll()
                 } catch (e: Exception) {
@@ -317,7 +321,7 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
         val total = if (studio.settings.smartShot) 3 else 1
         val shots = ArrayList<BurstPick.Shot>()
         previewView.display?.let { imageCapture.targetRotation = it.rotation }
-        sound.play(MediaActionSound.SHUTTER_CLICK)
+        try { sound.play(MediaActionSound.SHUTTER_CLICK) } catch (_: Throwable) { }
         previewView.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
 
         fun finish() {
@@ -326,14 +330,18 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
                 val best = try { BurstPick.pickBest(list) } catch (e: Throwable) { list[0].file }
                 ContextCompat.getMainExecutor(ctx).execute {
                     capturing = false
-                    studio.onPhotoReady(classId, no, Uri.fromFile(best), best)
+                    if (studio.screen is Screen.Camera) {
+                        studio.onPhotoReady(classId, no, Uri.fromFile(best), best)
+                    } else {
+                        best.delete()   // kullanıcı çekim bitmeden ekrandan ayrıldı
+                    }
                 }
             }.start()
         }
 
         fun one(i: Int) {
             val file = File(dir, "${no}_${stamp}_$i.jpg")
-            val eye = live?.eyeOpen ?: -1f
+            val eye = liveRaw.get()?.eyeOpen ?: -1f
             imageCapture.takePicture(
                 ImageCapture.OutputFileOptions.Builder(file).build(),
                 ContextCompat.getMainExecutor(ctx),
@@ -394,6 +402,7 @@ fun CameraScreen(studio: StudioViewModel, classId: String, no: String) {
         while (isActive) {
             delay(100)
             val now = System.currentTimeMillis()
+            live = liveRaw.get()   // arayüz durumu yalnızca 10 Hz güncellenir (30 Hz yeniden çizim yok)
             val l = live?.takeIf { now - it.ts < 700 }
             if (l == null) {
                 gate = null
